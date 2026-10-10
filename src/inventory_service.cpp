@@ -11,6 +11,7 @@ bool InventoryService::register_item_type(int id, int stack_limit) {
 	limits.insert(id, stack_limit);
 	return true;
 }
+
 bool InventoryService::register_inventory(const String &id, int capacity, bool copy_source) {
 	if (id.is_empty() || capacity < 1 || capacity > 4096)
 		return false;
@@ -22,14 +23,17 @@ bool InventoryService::register_inventory(const String &id, int capacity, bool c
 	inventories.insert(id, std::move(inventory));
 	return true;
 }
+
 int InventoryService::get_capacity(const String &id) const {
 	const Inventory *v = inventories.getptr(id);
 	return v ? int(v->slots.size()) : 0;
 }
+
 int64_t InventoryService::get_revision(const String &id) const {
 	const Inventory *v = inventories.getptr(id);
 	return v ? v->revision : -1;
 }
+
 bool InventoryService::is_copy_source(const String &id) const {
 	const Inventory *v = inventories.getptr(id);
 	return v && v->copy_source;
@@ -58,6 +62,7 @@ bool InventoryService::set_stack(const String &id, int index, int item_id, int a
 	changed(id, index);
 	return true;
 }
+
 bool InventoryService::add_items(const String &id, int item_id, int amount) {
 	Inventory *inventory = inventories.getptr(id);
 	if (!inventory || inventory->copy_source || !limits.has(item_id) || amount < 1)
@@ -85,6 +90,7 @@ bool InventoryService::add_items(const String &id, int item_id, int amount) {
 	changed(id);
 	return true;
 }
+
 String InventoryService::validate_transfer(const String &source, int from, const String &target, int to, int amount, int64_t revision) const {
 	if (!valid_slot(source, from) || !valid_slot(target, to))
 		return "invalid_slot";
@@ -103,9 +109,11 @@ String InventoryService::validate_transfer(const String &source, int from, const
 		return "incompatible";
 	return String();
 }
+
 bool InventoryService::can_transfer(const String &source, int from, const String &target, int to, int amount, int64_t revision) const {
 	return validate_transfer(source, from, target, to, amount, revision).is_empty();
 }
+
 Dictionary InventoryService::transfer(const String &source, int from, const String &target, int to, int amount, int64_t revision) {
 	Dictionary result;
 	const String error = validate_transfer(source, from, target, to, amount, revision);
@@ -144,6 +152,7 @@ Dictionary InventoryService::transfer(const String &source, int from, const Stri
 	changed(target, to);
 	return result;
 }
+
 Array InventoryService::snapshot(const String &id) const {
 	Array result;
 	for (int i = 0; i < get_capacity(id); ++i) {
@@ -152,6 +161,7 @@ Array InventoryService::snapshot(const String &id) const {
 	}
 	return result;
 }
+
 bool InventoryService::restore(const String &id, const Array &slots) {
 	Inventory *inventory = inventories.getptr(id);
 	if (!inventory)
@@ -177,6 +187,7 @@ bool InventoryService::restore(const String &id, const Array &slots) {
 	changed(id);
 	return true;
 }
+
 void InventoryService::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("register_item_type", "id", "stack_limit"), &InventoryService::register_item_type);
 	ClassDB::bind_method(D_METHOD("register_inventory", "id", "capacity", "copy_source"), &InventoryService::register_inventory, DEFVAL(false));

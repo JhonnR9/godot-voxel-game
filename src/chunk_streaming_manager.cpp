@@ -77,9 +77,11 @@ void ChunkStreamingManager::rebuild_all_chunks(const Vector3i &p_pos_center) {
        }
     }
 }
+
 bool ChunkStreamingManager::is_chunk_active(const Vector3i &p_pos) {
 	return _active_chunks.has(p_pos);
 }
+
 HashSet<Vector3i> ChunkStreamingManager::pop_queue_free_chunks() {
 	std::lock_guard lock(_queue_free_chunks_mutex);
 	HashSet<Vector3i> to_remove_chunks = _queue_free_chunks;

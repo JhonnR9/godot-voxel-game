@@ -20,6 +20,7 @@
 #include <memory>
 
 namespace godot {
+
 class VoxelAPI : public Node3D {
 	GDCLASS(VoxelAPI, Node3D)
 

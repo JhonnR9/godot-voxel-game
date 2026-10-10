@@ -6,6 +6,7 @@
 #include <vector>
 namespace godot {
 // Logical registry only. The Godot binding exchanges values, never UI objects.
+
 class InventoryService final : public Object {
 	GDCLASS(InventoryService, Object)
 	struct Stack {

@@ -9,6 +9,7 @@ func run() -> void:
 	assert(panel.visible and not menu.get_node("HUD").visible)
 	var tabs: TabContainer = panel.get_node("Center/Panel/Margin/Content/Categories")
 	assert(tabs.get_tab_count() == 3)
+
 	for index in range(tabs.get_tab_count()):
 		tabs.current_tab = index
 		await process_frame

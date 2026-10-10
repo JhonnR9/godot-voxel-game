@@ -20,6 +20,7 @@ func _ready() -> void:
 	save_timer.timeout.connect(_save_settings)
 	add_child(save_timer)
 	_load_settings()
+
 	for bus_name in volumes:
 		_apply_volume(bus_name)
 
@@ -55,6 +56,7 @@ func _load_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(SETTINGS_PATH) != OK:
 		return
+
 	for bus_name in volumes:
 		volumes[bus_name] = clampf(float(config.get_value("audio", bus_name, DEFAULT_VOLUME)), 0.0, 100.0)
 
@@ -62,6 +64,7 @@ func _save_settings() -> void:
 	if not has_unsaved_changes:
 		return
 	var config := ConfigFile.new()
+
 	for bus_name in volumes:
 		config.set_value("audio", bus_name, volumes[bus_name])
 	var error := config.save(SETTINGS_PATH)

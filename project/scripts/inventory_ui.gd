@@ -79,8 +79,10 @@ func set_mouse_unlocked(unlocked: bool) -> void:
 		drag_controller.cancel_drag()
 		creative_panel.finish_gesture()
 		inventory_panel.finish_gesture()
+
 	for panel in [creative_panel, inventory_panel]: panel.interaction_enabled = unlocked
 	_set_mouse_filters(self, unlocked)
+
 	for grid in [creative_grid, inventory_grid, hotbar_grid]:
 		grid.set_interaction_enabled(unlocked)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -94,16 +96,19 @@ func _set_mouse_filters(node: Node, enabled: bool) -> void:
 		if not node.has_meta("free_mouse_filter"):
 			node.set_meta("free_mouse_filter", node.mouse_filter)
 		node.mouse_filter = node.get_meta("free_mouse_filter") if enabled else Control.MOUSE_FILTER_IGNORE
+
 	for child in node.get_children(true): _set_mouse_filters(child, enabled)
 
 func _save_window_layout() -> void:
 	var data := {}
+
 	for panel in [creative_panel, inventory_panel]:
 		data[str(panel.name)] = [panel.position.x, panel.position.y, panel.size.x, panel.size.y]
 	SaveService.save_user_settings("inventory_windows", data)
 
 func _load_window_layout() -> void:
 	var data: Dictionary = SaveService.load_user_settings("inventory_windows")
+
 	for panel in [creative_panel, inventory_panel]:
 		var rect = data.get(str(panel.name), [])
 		if rect is Array and rect.size() == 4:
@@ -125,6 +130,7 @@ func _queue_reflow() -> void:
 
 func _reflow_windows() -> void:
 	reflow_queued = false
+
 	for pair in [[creative_grid, creative_scroll], [inventory_grid, inventory_scroll]]:
 		var grid = pair[0]
 		var scroll: ScrollContainer = pair[1]
@@ -135,6 +141,7 @@ func _reflow_windows() -> void:
 		columns = mini(columns, grid.get_slot_count())
 		if columns != grid.get_columns(): grid.set_columns(columns)
 	_set_mouse_filters(self, mouse_unlocked)
+
 	for grid in [creative_grid, inventory_grid, hotbar_grid]: grid.set_interaction_enabled(mouse_unlocked)
 
 func _resize_slots(grid: Control, side: int) -> void:
@@ -155,6 +162,7 @@ func _update_layout() -> void:
 		creative_panel.position = Vector2(16, 80)
 		inventory_panel.position = Vector2(maxf(16, size.x - 596), 80)
 		layout_initialized = true
+
 	for panel in [creative_panel, inventory_panel]: panel.clamp_to_screen()
 	set_mouse_unlocked(mouse_unlocked)
 
@@ -167,6 +175,7 @@ func _load_blocks() -> void:
 	if not (data is Dictionary) or not (data.get("blocks", []) is Array):
 		push_error("Generated block registry metadata is invalid.")
 		return
+
 	for block: Dictionary in data.blocks:
 		if int(block.get("id", 0)) == 0:
 			continue

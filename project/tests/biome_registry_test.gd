@@ -6,11 +6,13 @@ func run() -> void:
 	var land_index := -1
 	var tree_index := -1
 	var vegetation_index := -1
+
 	for index in range(data.biomes.size()):
 		var entry: Dictionary = data.biomes[index]
 		if entry.selection.kind == "land" and land_index < 0: land_index = index
 		if int(entry.get("trees", {}).get("max_per_chunk", 0)) > 0: tree_index = index
 		if int(entry.get("vegetation", {}).get("coverage_max", 0)) > 0: vegetation_index = index
+
 	for change in ["duplicate", "gap", "block", "strata", "version", "noise", "trees", "plants", "rarity", "fractional_rarity", "fallback"]:
 		var invalid := data.duplicate(true)
 		match change:
@@ -58,6 +60,7 @@ func run() -> void:
 	# Remove decorations only in this fixture, then compare the real generated
 	# terrain to the public sampler at chunk edges and negative coordinates.
 	var plain := data.duplicate(true)
+
 	for b in plain.biomes:
 		b.trees = {}
 		b.vegetation = {}
@@ -75,10 +78,12 @@ func run() -> void:
 				check(above == (expected_fill if expect_water else block_id("air")), "Sampler and surface fill/air disagree.")
 	# Exercise all existing palettes across broad climate/coast regions.
 	var found: Dictionary = {}
+
 	for z in range(-4096, 4097, 128):
 		for x in range(-4096, 4097, 128):
 			var c: Dictionary = defaults.sample_terrain_column(Vector2i(x, z))
 			found[c.biome_name] = true
+
 	for entry: Dictionary in data.biomes:
 		var name: String = entry.name
 		if int(entry.get("rarity", 1)) == 0:
@@ -86,6 +91,7 @@ func run() -> void:
 		# Rare or narrow profiles may legitimately be absent from a finite scan.
 		# Exercise every registered profile separately below instead of requiring golden counts.
 	print("Configured biome coverage: ", found.keys())
+
 	for entry: Dictionary in data.biomes:
 		var isolated := data.duplicate(true)
 		var profile := entry.duplicate(true)
@@ -156,6 +162,7 @@ func run() -> void:
 	world.start_world(int(SaveService.create_world(42, "Bedrock loading boundary test")))
 	if await wait_for_world(world):
 		check(world.get_block_type_at(Vector3(0, int(world.get_pipeline_stats().world_min_y), 0)) == block_id("bedrock"), "Bedrock boundary failed to load.")
+
 	for frame in range(60):
 		await process_frame
 	print("Biome registry checks finished: ", failures, " failures.")

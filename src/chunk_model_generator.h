@@ -4,6 +4,7 @@
 #include "chunk_task_scheduler.h"
 #include <godot_cpp/classes/ref_counted.hpp>
 namespace godot {
+
 struct ChunkJob {
 	Vector3i pos;
 	TerrainSettings settings;
@@ -12,12 +13,14 @@ struct ChunkJob {
 	uint64_t request_id = 0;
 	uint64_t queued_us	= 0;
 };
+
 struct ChunkModelResult {
 	Vector3i pos;
 	std::shared_ptr<Chunk> model;
 	uint64_t request_id = 0;
 	uint64_t wait_us = 0, work_us = 0;
 };
+
 class ChunkModelGenerator final : public RefCounted {
 	GDCLASS(ChunkModelGenerator, RefCounted)
 	static std::vector<ChunkModelResult> run_batch(const std::vector<ChunkJob> &jobs);

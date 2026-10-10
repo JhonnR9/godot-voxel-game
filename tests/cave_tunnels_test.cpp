@@ -15,11 +15,13 @@ int main() {
     assert(!hollow({tunnel},{6,3,0}));
     assert(hollow({tunnel},{0,0,0}));
     assert(!hollow({tunnel},{20,0,0}));
+
     std::mt19937 rng(7319);
     for (int64_t seed : {0,1,42,-19,987654}) {
         const auto whole=CaveTunnels::for_bounds(seed,{-96,-64,-96},{96,64,96});
         const auto again=CaveTunnels::for_bounds(seed,{-96,-64,-96},{96,64,96});
         assert(whole.size()==again.size());
+
         for (size_t i=0;i<whole.size();++i) {
             const auto &a=whole[i]; const auto &b=again[i];
             assert(a.a.x==b.a.x && a.a.y==b.a.y && a.a.z==b.a.z);
@@ -27,6 +29,7 @@ int main() {
             assert(a.radius>=3 && a.radius<=CaveTunnels::MAX_RADIUS);
             assert(hollow({a},a.a) && hollow({a},a.b));
         }
+
         int count=0;
         for (int i=0;i<6000;++i) {
             const int x=static_cast<int>(rng()%192)-96;
@@ -45,6 +48,7 @@ int main() {
         assert(fraction>0.003 && fraction<0.15);
         std::cout << "seed " << seed << ": " << fraction*100 << "% hollow samples\n";
     }
+
     // Check precisely around shared chunk and region boundaries.
     const auto broad=CaveTunnels::for_bounds(42,{-112,-80,-112},{112,80,112});
     for (int x : {-97,-96,-95,-17,-16,-15,-1,0,1,15,16,17,95,96,97})

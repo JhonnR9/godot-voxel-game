@@ -4,12 +4,14 @@ func run() -> void:
 	var data: Dictionary = biome_registry()
 	var plains: Dictionary
 	var mountains: Dictionary
+
 	for biome in data.biomes:
 		if biome.name == "plains": plains = biome.duplicate(true)
 		if biome.name == "mountains": mountains = biome
 	check(not mountains.is_empty(), "Configured mountain profile missing.")
 	check(not plains.is_empty(), "Configured plains profile missing.")
 	var invalid := data.duplicate(true)
+
 	for profile in invalid.biomes:
 		if profile.name == "plains":
 			profile.vegetation.cluster_radius = int(profile.vegetation.patch_size)
@@ -25,6 +27,7 @@ func run() -> void:
 	await wait_for_world(world)
 	var low := int(world.get_pipeline_stats().world_max_y)
 	var high := int(world.get_pipeline_stats().world_min_y)
+
 	for z in range(-2048, 2049, 32):
 		for x in range(-2048, 2049, 32):
 			var c: Dictionary = world.sample_terrain_column(Vector2i(x, z))
@@ -40,6 +43,7 @@ func run() -> void:
 	var radius := int(vegetation.get("cluster_radius", 0))
 	var flower_count := 0
 	var occupied_patches := {}
+
 	for z in range(-48, 48):
 		for x in range(-48, 48):
 			var c: Dictionary = world.sample_terrain_column(Vector2i(x, z))
@@ -55,5 +59,6 @@ func run() -> void:
 		var max_per_patch := (2 * radius + 1) * (2 * radius + 1)
 		check(flower_count <= occupied_patches.size() * max_per_patch, "Cluster population exceeds configured radius.")
 	print("Plains checks finished: ", failures, " failures; height ", low, "..", high, "; ", flower_count, " flowers in ", occupied_patches.size(), " clusters.")
+
 	for frame in range(60): await process_frame
 	quit(1 if failures else 0)

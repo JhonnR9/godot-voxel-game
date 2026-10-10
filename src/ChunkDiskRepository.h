@@ -11,6 +11,7 @@
 #include <vector>
 
 namespace godot {
+
 class ChunkDiskRepository : public RefCounted {
 	GDCLASS(ChunkDiskRepository, RefCounted)
 protected:

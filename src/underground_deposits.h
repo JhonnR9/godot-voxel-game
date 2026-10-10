@@ -7,7 +7,9 @@
 #include <vector>
 
 namespace voxel {
+
 enum class DepositKind { IRON, COAL, DIAMOND, DIRT };
+
 struct UndergroundDeposit {
     DepositKind kind;
     double x, y, z, rx, ry, rz;

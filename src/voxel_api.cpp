@@ -63,14 +63,17 @@ void VoxelAPI::_setup_noises() {
     setup(_ocean_noise,w.ocean,FastNoiseLite::TYPE_SIMPLEX);
     setup(_river_noise,w.river,FastNoiseLite::TYPE_SIMPLEX);
 }
+
 void VoxelAPI::set_biome_registry_path(const String &path) {
     ERR_FAIL_COND_MSG(is_node_ready(), "Set biome_registry_path before adding VoxelAPI to the scene tree.");
     _biome_registry_path=path;
 }
+
 Dictionary VoxelAPI::validate_biome_registry(const Dictionary &data) {
     String error; const auto registry=BiomeRegistry::from_dictionary(data,error);
     Dictionary result; result["valid"]=bool(registry); result["error"]=error; return result;
 }
+
 Dictionary VoxelAPI::sample_terrain_column(const Vector2i &position) const {
     ERR_FAIL_COND_V_MSG(!_biome_registry, Dictionary(), "VoxelAPI must be ready before sampling terrain.");
     const auto c=TerrainSampler::sample(_make_terrain_settings(),position.x,position.y);
@@ -464,6 +467,7 @@ void VoxelAPI::start_world(int64_t p_id) {
 			spawn.y = MAX(column.surface_height + 1, column.water_level) + 5.0;
 			_focus_node->set_global_position(spawn);
 		}
+
 		if (player_data.has("yaw") && player_data.has("pitch") && _focus_node->has_method("restore_rotation")) {
 			_focus_node->call("restore_rotation", double(player_data["yaw"]), double(player_data["pitch"]));
 		}
@@ -719,6 +723,7 @@ void VoxelAPI::_unload_region(const Vector3i &region_pos) {
 
 	_region_cache.erase(region_pos);
 }
+
 void VoxelAPI::_setup_generation_pipeline(int64_t p_seed) {
     _column_cache = std::make_shared<TerrainColumnCache>();
 	_world_seed = p_seed;
@@ -838,6 +843,7 @@ void VoxelAPI::_clear_world() {
     _last_finalize_ms = _max_finalize_ms = 0.0;
     _preview_mode = false;
 }
+
 void VoxelAPI::_finalize_chunk(const MeshResult &res) {
 	std::shared_ptr<Chunk> chunk = _chunk_repository->get_chunk(res.pos);
 
@@ -899,7 +905,7 @@ void VoxelAPI::_finalize_chunk(const MeshResult &res) {
 				is_water_surface ? chunk_node->get_water_material() : chunk_node->get_material());
 	}
 	chunk_node->set_collision_faces(res.collision_faces);
-	chunk_node->set_torch_positions(res.torch_positions);
+	chunk_node->set_light_positions(res.light_positions);
 	chunk_node->set_selection_positions(res.selection_positions);
 	chunk_node->set_global_position(voxel::chunk_coords_to_world(res.pos));
 
@@ -915,6 +921,7 @@ TerrainSettings VoxelAPI::_make_terrain_settings() const {
     settings.mountain_noise=_mountain_noise; settings.ocean_noise=_ocean_noise; settings.river_noise=_river_noise;
     return settings;
 }
+
 void VoxelAPI::_queue_async_generate_chunk(const Vector3i p_pos) const {
     const TerrainSettings settings=_make_terrain_settings();
 
@@ -974,6 +981,7 @@ void VoxelAPI::save_world_final() const {
 				player_data["pitch"] = head->get_rotation().x;
 			}
 		}
+
 		if (!SaveService::get_singleton()->save_world_section(
 				_disk_repository->get_current_world_id(), "player", player_data)) {
 			WARN_PRINT("Could not save player state.");
@@ -1048,6 +1056,7 @@ void VoxelAPI::set_pipeline_settings(const Dictionary &settings) {
     _mesh_generator->configure(batch, inflight);
     _mesh_finalize_budget_ms = std::clamp(double(settings.get("finalize_budget_ms", 2.0)), 0.1, 8.0);
 }
+
 Dictionary VoxelAPI::get_pipeline_stats() const {
     Dictionary stats;
     stats["chunk_size"] = Vector3i(Chunk::SIZE_X, Chunk::SIZE_Y, Chunk::SIZE_Z);
@@ -1063,6 +1072,7 @@ Dictionary VoxelAPI::get_pipeline_stats() const {
     stats["finalize_budget_ms"] = _mesh_finalize_budget_ms;
     return stats;
 }
+
 void VoxelAPI::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("world_opened", PropertyInfo(Variant::INT, "world_id")));
 	ADD_SIGNAL(MethodInfo("world_saving", PropertyInfo(Variant::INT, "world_id")));

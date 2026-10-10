@@ -46,6 +46,7 @@ func get_available_resolutions() -> Array[Vector2i]:
 		screen_size = Vector2i(1920, 1080)
 
 	var resolutions: Array[Vector2i] = []
+
 	for size in STANDARD_RESOLUTIONS:
 		if size.x <= screen_size.x and size.y <= screen_size.y:
 			resolutions.append(size)

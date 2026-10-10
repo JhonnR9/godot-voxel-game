@@ -171,6 +171,7 @@ func _load_display_settings() -> void:
 	available_resolutions = DisplaySettings.get_available_resolutions()
 	resolution.clear()
 	var selected_index := 0
+
 	for index in range(available_resolutions.size()):
 		var resolution_size := available_resolutions[index]
 		resolution.add_item("%d × %d" % [resolution_size.x, resolution_size.y], index)

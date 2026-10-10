@@ -16,6 +16,7 @@ bool ChunkRepository::is_chunk_dirty(const Vector3i &p_pos) {
 	std::lock_guard lock(_dirty_chunks_mutex);
 	return _dirty_chunks.has(p_pos);
 }
+
 void ChunkRepository::_update_dirty_chunks(const Vector3i &p_local_pos, const Vector3i &p_chunk_pos) {
 	std::lock_guard lock(_dirty_chunks_mutex);
 
@@ -63,6 +64,7 @@ HashMap<Vector3i, voxel::Region> ChunkRepository::get_all_edited_regions() const
 
 	return regions;
 }
+
 HashSet<Vector3i> ChunkRepository::get_dirty_regions() {
 	std::lock_guard lock(_dirty_regions_mutex);
 	HashSet<Vector3i> dirty = _dirty_regions;
@@ -202,6 +204,7 @@ void ChunkRepository::set_world_model(const WorldModel &p_world) {
 WorldModel ChunkRepository::get_world_model(uint64_t p_id) {
 	return world_model_;
 }
+
 voxel::Region ChunkRepository::get_edited_region(const Vector3i &p_region_pos) const {
 	std::lock_guard lock(_edited_blocks_mutex);
 	voxel::Region region;
@@ -215,6 +218,7 @@ voxel::Region ChunkRepository::get_edited_region(const Vector3i &p_region_pos) c
 	}
 	return region;
 }
+
 HashMap<Vector3i, HashMap<Vector3i, voxel::Block>> ChunkRepository::get_edited_chunks() const {
 	std::lock_guard lock(_edited_blocks_mutex);
 	return _edited_chunks;

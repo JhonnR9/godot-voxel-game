@@ -40,6 +40,7 @@ func rebuild() -> bool:
 	var texture_names := _get_texture_names(blocks)
 	var texture_images: Array[Image] = []
 	var reference_size := Vector2i(-1, -1)
+
 	for texture_name in texture_names:
 		var path := _find_texture_path(texture_name)
 		if path.is_empty():
@@ -66,10 +67,12 @@ func rebuild() -> bool:
 		return false
 
 	var texture_layers: Dictionary = {}
+
 	for index in range(texture_names.size()):
 		texture_layers[texture_names[index]] = index
 
 	var generated_blocks: Array[Dictionary] = []
+
 	for block: Dictionary in blocks:
 		var textures: Dictionary = block.get("textures", {})
 		var side := str(textures.get("side", ""))
@@ -115,6 +118,7 @@ func _validate_blocks(blocks: Array) -> String:
 	var names := {}
 	var name_regex := RegEx.new()
 	name_regex.compile("^[a-z][a-z0-9_]*$")
+
 	for block: Dictionary in blocks:
 		var id := int(block.get("id", -1))
 		var name := str(block.get("name", ""))
@@ -153,6 +157,7 @@ func _validate_blocks(blocks: Array) -> String:
 
 func _get_texture_names(blocks: Array) -> Array[String]:
 	var names: Array[String] = []
+
 	for block: Dictionary in blocks:
 		for texture_name in block.get("textures", {}).values():
 			var key := str(texture_name)
@@ -172,6 +177,7 @@ func _find_texture_path(texture_name: String) -> String:
 
 func _flag_mask(flags: Array) -> int:
 	var result := 0
+
 	for flag in flags:
 		result |= int(FLAG_BITS.get(str(flag), 0))
 	return result
@@ -188,15 +194,19 @@ func _write_json(path: String, value: Variant) -> bool:
 
 func _write_header(blocks: Array[Dictionary], water_layer: int, texture_layers: Dictionary) -> bool:
 	var output := "#ifndef BLOCK_REGISTRY_GENERATED_H\n#define BLOCK_REGISTRY_GENERATED_H\n\n#include <cstdint>\n#include <string_view>\n\nnamespace voxel {\nnamespace block_ids {\n"
+
 	for block: Dictionary in blocks:
 		output += "inline constexpr std::uint16_t %s = %d;\n" % [str(block.name), int(block.id)]
 	output += "}\n\ninline constexpr std::uint32_t default_block_flags(std::uint16_t id) {\n\tswitch (id) {\n"
+
 	for block: Dictionary in blocks:
 		output += "\t\tcase block_ids::%s: return %du;\n" % [str(block.name), _flag_mask(block.get("flags", []))]
 	output += "\t\tdefault: return 0u;\n\t}\n}\n\ninline constexpr std::uint16_t block_id_from_name(std::string_view name) {\n"
+
 	for block: Dictionary in blocks:
 		output += "\tif (name == \"%s\") return block_ids::%s;\n" % [str(block.name), str(block.name)]
 	output += "\treturn 0xffff;\n}\n\ninline constexpr int texture_layer_from_name(std::string_view name) {\n"
+
 	for texture_name: String in texture_layers:
 		output += "\tif (name == %s) return %d;\n" % [JSON.stringify(texture_name), int(texture_layers[texture_name])]
 	output += "\treturn -1;\n}\n\ninline constexpr int WATER_TEXTURE_LAYER = %d;\n}\n\n#endif\n" % water_layer
@@ -216,6 +226,7 @@ func _write_texture_array(images: Array[Image]) -> bool:
 		return false
 	var resource_text := "[gd_resource type=\"Texture2DArray\" format=4 uid=\"uid://bjx6v2kqe3jyk\"]\n\n"
 	var image_refs := PackedStringArray()
+
 	for index in range(images.size()):
 		var image: Image = images[index]
 		var subresource_id := "Image_layer_%d" % index

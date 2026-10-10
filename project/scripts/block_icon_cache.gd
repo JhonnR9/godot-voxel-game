@@ -42,14 +42,17 @@ func prepare(blocks: Array, cache_path: String = CACHE_PATH) -> Dictionary:
 	manifest.load(cache_path.path_join("manifest.cfg"))
 	var source_hash := ""
 	var texture_keys: Dictionary = {}
+
 	for block: Dictionary in blocks:
 		for key: String in block.get("textures", {}).values():
 			texture_keys[key] = true
 	var sorted_keys := texture_keys.keys()
 	sorted_keys.sort()
+
 	for key: String in sorted_keys:
 		source_hash += key + _resource_hash(_texture_path(key))
 	var updated := false
+
 	for entry: Variant in blocks:
 		if not entry is Dictionary or int(entry.get("id", 0)) == 0:
 			continue
@@ -133,6 +136,7 @@ func _render_icon(block: Dictionary) -> Image:
 
 func _paint_face(target: Image, source: Image, origin: Vector2, u_axis: Vector2, v_axis: Vector2, tint: Color, shade: float) -> void:
 	var determinant := u_axis.cross(v_axis)
+
 	for y in range(ICON_SIZE):
 		for x in range(ICON_SIZE):
 			var offset := Vector2(x + 0.5, y + 0.5) - origin

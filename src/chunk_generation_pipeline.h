@@ -30,6 +30,7 @@ struct TerrainSettings {
 
 // Generation writes are ordered by ownership. A later layer can replace an
 // earlier one, while lower-priority passes cannot overwrite established features.
+
 enum class GenerationLayer : uint8_t {
 	TERRAIN = 1,
 	CARVING = 2,
@@ -42,6 +43,7 @@ enum class GenerationLayer : uint8_t {
 
 // Complete base column sampled once before terrain is filled. The definition
 // pointer belongs to settings.biome_registry (or the static fallback registry).
+
 struct ColumnGenerationData {
 	const BiomeDefinition *definition = nullptr;
 	int deep_rock_below_y = -32;
@@ -94,6 +96,7 @@ public:
 
 // Passes execute in insertion order. Configure the pipeline before handing it
 // to ChunkModelGenerator; generation workers then only read the pass list.
+
 class ChunkGenerationPipeline {
 	std::vector<std::shared_ptr<const ChunkGenerationPass>> _passes;
 

@@ -13,6 +13,7 @@ var recovering := false
 
 func _ready() -> void:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/block_registry.generated.json"))
+
 	for block: Dictionary in data.get("blocks", []):
 		var id := int(block.id)
 		if id == 0: continue
@@ -68,11 +69,13 @@ func make_view(stack: Dictionary):
 
 func serialize_player() -> Dictionary:
 	var data := {"version": 3, "ids": get_player_ids(), "selected_slot": selected_slot}
+
 	for role in player_ids: data[role] = InventoryService.snapshot(player_ids[role])
 	return data
 
 func restore_player(data: Dictionary) -> void:
 	get_player_ids()
+
 	for role in ["hotbar", "storage"]:
 		var slots = data.get(role, [])
 		InventoryService.restore(player_ids[role], slots if slots is Array else [])
@@ -99,6 +102,7 @@ func load_world(id: int) -> void:
 	var records = saved.get("records", {})
 	if not records is Dictionary: records = {}
 	# Keep generic records, including an old crafting record, without requiring a UI.
+
 	for uuid in records:
 		var record = records[uuid]
 		if not uuid is String or not record is Dictionary: continue
@@ -109,6 +113,7 @@ func load_world(id: int) -> void:
 			var slots = record.get("slots", [])
 			InventoryService.restore(uuid, slots if slots is Array else [])
 	var data: Dictionary = legacy.duplicate(true)
+
 	for role in ["hotbar", "storage"]:
 		var uuid: String = str(ids.get(role, ""))
 		if uuid.is_empty() or (owners.has(uuid) and owners[uuid] != id) or player_ids.values().has(uuid): uuid = create_uuid()
@@ -132,6 +137,7 @@ func load_world(id: int) -> void:
 func save_world(id: int) -> bool:
 	if id <= 0 or id != world_id: return false
 	var records := {}
+
 	for uuid in owners:
 		if owners[uuid] == id:
 			records[uuid] = {"capacity": InventoryService.get_capacity(uuid), "slots": InventoryService.snapshot(uuid)}
@@ -148,6 +154,7 @@ func recover_legacy_items() -> void:
 	if recovering or not player_ids.has("recovery"): return
 	recovering = true
 	var source: String = player_ids.recovery
+
 	for index in range(InventoryService.get_capacity(source)):
 		for destination in [player_ids.storage, player_ids.hotbar]:
 			for target in range(InventoryService.get_capacity(destination)):

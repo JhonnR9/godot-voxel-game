@@ -7,12 +7,14 @@
 int main(int argc, char **argv) {
     const auto registry = test_registry::load(argc, argv);
     const int64_t seed = argc > 2 ? std::stoll(argv[2]) : 42;
+
     for (const auto &[name, profile] : registry.profiles) {
         auto empty = profile;
         empty.coverage_min = empty.coverage_max = 0;
         std::map<uint16_t, test_registry::Plant> allowed;
         for (const auto &plant : profile.plants) allowed[plant.block] = plant;
         for (const auto &plant : profile.flowers) allowed[plant.block] = plant;
+
         for (int64_t current_seed : {seed, seed + 1, seed - 1}) {
             int occupied = 0;
             const int span = profile.patch_size * 32;
@@ -36,6 +38,7 @@ int main(int argc, char **argv) {
             std::cout << name << " seed " << current_seed << ": " << occupied << "/" << total
                       << " plants; patch size " << profile.patch_size << ", chance " << profile.patch_chance << '\n';
         }
+
         // Guaranteed coverage isolates configured species heights from production density.
         for (const auto &[id, plant] : allowed) {
             auto heights = profile;

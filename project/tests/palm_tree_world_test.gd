@@ -2,12 +2,14 @@ extends "res://tests/support/test_case.gd"
 
 func run() -> void:
 	var data: Dictionary = biome_registry()
+
 	for b in data.biomes:
 		if b.name == "beach":
 			check(b.trees.shape == "palm" and block_id(b.trees.trunk) > 0, "Beach palm profile missing.")
 		elif b.name == "desert" or b.name == "ocean":
 			check(b.get("trees", {}).get("max_per_chunk", 0) == 0, "Palms configured outside beach.")
 	var invalid := data.duplicate(true)
+
 	for profile in invalid.biomes:
 		if profile.name == "beach": profile.trees.shape = "unknown"
 	check(not VoxelAPI.validate_biome_registry(invalid).valid, "Invalid tree shape accepted.")
@@ -21,6 +23,7 @@ func run() -> void:
 	data.world.coast_span = 0.001
 	data.world.dry_coast_span = 0.001
 	data.world.wet_coast_offset = 0
+
 	for b in data.biomes:
 		b.relief = b.get("relief", {})
 		b.relief.ridge_amplitude = 0
@@ -50,6 +53,7 @@ func run() -> void:
 			check(trunks > 0 and leaves > 0, "Beach palms were not generated.")
 		else:
 			check(trunks == 0 and leaves == 0, "Disabled beach palms were generated.")
+
 	for frame in range(60): await process_frame
 	print("Palm tree checks finished: ", failures, " failures.")
 	quit(1 if failures else 0)

@@ -52,6 +52,7 @@ func run() -> void:
 	root.add_child(ui)
 	check(ui.collect_block(block_id("fern")), "Plant can be collected into inventory")
 	ui.free()
+
 	for entry: Dictionary in blocks_with_flag("crossed"):
 		if entry.name == "torch": continue
 		var name: String = entry.name

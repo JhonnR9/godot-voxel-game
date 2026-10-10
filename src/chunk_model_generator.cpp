@@ -8,6 +8,7 @@ void ChunkModelGenerator::_queue_async_generate_chunk_model(Vector3i pos, const 
 		return;
 	scheduler.enqueue(ChunkJob{ pos, settings, std::move(pipeline), priority });
 }
+
 std::vector<ChunkModelResult> ChunkModelGenerator::run_batch(const std::vector<ChunkJob> &jobs) {
 	std::vector<ChunkModelResult> results;
 	results.reserve(jobs.size());
@@ -19,6 +20,7 @@ std::vector<ChunkModelResult> ChunkModelGenerator::run_batch(const std::vector<C
 	}
 	return results;
 }
+
 std::vector<ChunkModelResult> ChunkModelGenerator::consume_generated_results(int amount) {
 	std::vector<ChunkModelResult> results;
 	ChunkModelResult result;

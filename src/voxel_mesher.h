@@ -11,10 +11,12 @@
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 namespace godot {
+
 struct ChunkNeighbors;
 
 class VoxelMesher {
 public:
+
 	void clear();
 
 	void add_quad(

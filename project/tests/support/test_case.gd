@@ -45,6 +45,7 @@ func biome(name: String) -> Dictionary:
 
 func biomes_of_kind(kind: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+
 	for entry: Dictionary in biome_registry().get("biomes", []):
 		if entry.get("selection", {}).get("kind", "land") == kind:
 			result.append(entry)
@@ -59,6 +60,7 @@ func block_id(name: String) -> int:
 
 func blocks_with_flag(flag: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+
 	for entry: Dictionary in block_registry().get("blocks", []):
 		if entry.get("flags", []).has(flag):
 			result.append(entry)
@@ -66,6 +68,7 @@ func blocks_with_flag(flag: String) -> Array[Dictionary]:
 
 func profile_block_ids(profile: Dictionary, keys: Array = ["plants", "flowers"]) -> Array[int]:
 	var result: Array[int] = []
+
 	for key: String in keys:
 		for entry: Dictionary in profile.get(key, []):
 			var id := block_id(entry.block)
@@ -76,6 +79,7 @@ func profile_block_ids(profile: Dictionary, keys: Array = ["plants", "flowers"])
 func test_seeds() -> Array[int]:
 	var result: Array[int] = []
 	var configured := OS.get_environment("TEST_SEEDS")
+
 	for value in (configured if not configured.is_empty() else "42,1234,2026").split(","):
 		result.append(int(value))
 	return result
@@ -85,6 +89,7 @@ func test_seed() -> int:
 
 func rarity_levels(configured: int) -> Array[int]:
 	var result: Array[int] = [0, 1]
+
 	for value in [configured, mini(10000, maxi(1, configured) * 2), mini(10000, maxi(1, configured) * 4)]:
 		if not result.has(value):
 			result.append(value)

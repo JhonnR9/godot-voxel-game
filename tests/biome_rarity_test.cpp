@@ -8,6 +8,7 @@
 int main(int argc, char **argv) {
     const auto registry = test_registry::load(argc, argv);
     const int64_t seed = argc > 2 ? std::stoll(argv[2]) : 42;
+
     for (const auto &biome : registry.biomes) {
         std::set<int> levels{0, 1, biome.rarity, std::min(10000, std::max(1, biome.rarity) * 2), std::min(10000, std::max(1, biome.rarity) * 4)};
         std::map<int, int> counts;
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
                 assert(std::abs(value - voxel::biome_presence(probe, seed, biome.id, x + 1, z)) < 0.10f);
             }
         assert(counts[0] == 0 && counts[1] == total);
+
         int previous = total;
         for (int rarity : levels) if (rarity > 1) {
             assert(counts[rarity] <= previous);
@@ -40,6 +42,7 @@ int main(int argc, char **argv) {
             previous = counts[rarity];
         }
         if (biome.rarity <= 4) assert(changed > 0);
+
         std::cout << biome.name << " (ID " << biome.id << ", configured rarity " << biome.rarity << "):";
         for (const auto &[rarity, count] : counts) std::cout << " " << rarity << "=" << count << "/" << total;
         std::cout << '\n';

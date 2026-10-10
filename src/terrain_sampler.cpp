@@ -33,6 +33,7 @@ std::shared_ptr<const std::vector<ColumnGenerationData>> TerrainColumnCache::get
     entries.emplace(key, sampled);
     return sampled;
 }
+
 ColumnGenerationData TerrainSampler::sample(const TerrainSettings &s, int32_t x, int32_t z) {
 	const BiomeRegistry &registry = s.biome_registry ? *s.biome_registry : *BiomeRegistry::defaults();
 	const auto &w				  = registry.world;
@@ -87,6 +88,7 @@ ColumnGenerationData TerrainSampler::sample(const TerrainSettings &s, int32_t x,
 			if (influence > r->selection_influence && c.surface_height <= c.water_level + w.river_bed_offset)
 				chosen = r;
 		}
+
 		if (chosen == &land && beach && ocean > beach->selection_influence && c.surface_height <= c.water_level + beach->selection_height_offset)
 			chosen = beach;
 	}
@@ -142,6 +144,7 @@ ColumnGenerationData TerrainSampler::sample(const TerrainSettings &s, int32_t x,
 	c.trees_allowed = chosen->trees.max_per_chunk > 0 && matches(c.climate_weight, chosen->trees.climate_min, chosen->trees.climate_max);
 	return c;
 }
+
 voxel::Block TerrainSampler::block_at(const ColumnGenerationData &c, int32_t y) {
 	if (y == WORLD_BEDROCK_Y)
 		return voxel::make_block(voxel::block_ids::bedrock);

@@ -13,6 +13,7 @@ func run() -> void:
 		await process_frame
 	assert(not world.is_initial_loading(), "Underground chunks did not finish loading.")
 	var counts: Dictionary = {}
+
 	for z in range(-32, 32):
 		for x in range(-32, 32):
 			for y in range(-80, -16):
@@ -25,6 +26,7 @@ func run() -> void:
 	assert(int(counts.get(block_id("air"), 0)) > 100, "Open tunnel volume missing.")
 	print("Underground world integration passed. Block counts: ", counts)
 	# Allow pending neighbour mesh jobs to drain before process shutdown.
+
 	for frame in range(60):
 		await process_frame
 	quit()

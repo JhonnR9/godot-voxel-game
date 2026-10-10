@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/box_shape3d.hpp>
 
+
 namespace godot {
 
 void ChunkNode::_setup() {
@@ -121,20 +122,20 @@ void ChunkNode::set_selection_positions(const PackedVector3Array &positions) {
     _selection_body->set_meta("voxel_selection_positions", positions);
 }
 
-void ChunkNode::set_torch_positions(const PackedVector3Array &positions) {
-    if (positions == _torch_positions) return;
-    _torch_positions = positions;
-    for (OmniLight3D *light : _torch_lights) {
+void ChunkNode::set_light_positions(const PackedVector3Array &positions) {
+    if (positions == _light_positions) return;
+    _light_positions = positions;
+    for (OmniLight3D *light : _lights) {
         remove_child(light);
         memdelete(light);
     }
-    _torch_lights.clear();
+    _lights.clear();
     for (int i = 0; i < positions.size(); ++i) {
         OmniLight3D *light = memnew(OmniLight3D);
-        light->set_name("TorchLight");
+        light->set_name("Light");
         light->set_position(positions[i]);
-        light->set_color(Color(1.0f, 0.64f, 0.28f));
-        light->set_param(Light3D::PARAM_ENERGY, 2.4f);
+		light->set_color(Color(1.0f, 1.0f, 1.0f));
+		light->set_param(Light3D::PARAM_ENERGY, 1.0f);
         light->set_param(Light3D::PARAM_RANGE, 8.0f);
         light->set_shadow(true);
         light->set_enable_distance_fade(true);
@@ -142,12 +143,12 @@ void ChunkNode::set_torch_positions(const PackedVector3Array &positions) {
         light->set_distance_fade_length(8.0f);
         light->set_distance_fade_shadow(24.0f);
         add_child(light);
-        _torch_lights.push_back(light);
+        _lights.push_back(light);
     }
 }
 
 void ChunkNode::disable() {
-    set_torch_positions(PackedVector3Array());
+    set_light_positions(PackedVector3Array());
     set_selection_positions(PackedVector3Array());
     set_mesh(Ref<Mesh>());
 

@@ -18,6 +18,7 @@ func run() -> void:
 	root.add_child(player)
 	manager.setup(player, ui)
 	manager.open_inventory()
+
 	for frame in range(4): await process_frame
 	var source: String = ui.inventory_ids.hotbar
 	var target: String = ui.inventory_ids.storage

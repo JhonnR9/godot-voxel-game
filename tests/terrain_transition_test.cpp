@@ -9,6 +9,7 @@ int main(int argc, char **argv) {
 	const int bed = registry.sea_level + registry.wet_coast_offset;
 	const int shelf = registry.sea_level + registry.dry_coast_offset;
 	const int top = registry.sea_level;
+
 	float boundary = -1;
 	for (const auto &biome : registry.biomes)
 		if (biome.surface_fill == "ice") { boundary = biome.climate_max; break; }
@@ -26,6 +27,7 @@ int main(int argc, char **argv) {
 		}
 	assert(low < 0.1f && high > 0.9f);
 	assert(voxel::transition_patch(42, -16, 16) != voxel::transition_patch(43, -16, 16));
+
 	for (float dry : {0.0f, 0.5f, 1.0f}) {
 		float previous = shelf;
 		for (int i = 0; i <= 100; ++i) {
@@ -36,9 +38,11 @@ int main(int argc, char **argv) {
 		assert(previous == bed);
 	}
 	assert(voxel::coast_height(bed, shelf, 1, 0.4f) == shelf);
+
 	assert(voxel::freezing_weight(boundary - 0.14f, boundary, 0.14f) == 1);
 	assert(voxel::freezing_weight(boundary + 0.14f, boundary, 0.14f) == 0);
 	assert(std::abs(voxel::freezing_weight(boundary, boundary, 0.14f) - 0.5f) < 0.0001f);
+
 	for (float patch : {0.0f, 0.5f, 1.0f}) {
 		assert(voxel::freezing_height(0, patch, bed, top) == bed);
 		assert(voxel::freezing_height(1, patch, bed, top) == top - 1);

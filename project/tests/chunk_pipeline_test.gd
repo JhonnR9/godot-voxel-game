@@ -41,6 +41,7 @@ func run() -> void:
 	check(stats.models.tasks_submitted < stats.models.chunks_completed, "Batching did not amortize model submissions")
 	check(stats.loaded_models > 245, "Visible chunks lack a generated data halo")
 	var before: int = stats.meshes.tasks_submitted
+
 	for frame in range(30): await process_frame
 	check(world.get_pipeline_stats().meshes.tasks_submitted == before, "Idle world keeps rebuilding meshes")
 
@@ -48,6 +49,7 @@ func run() -> void:
 	# retain the last desired version while a previous snapshot is being meshed.
 	var point := Vector3(31, 33, 31)
 	var torch := block_id("torch")
+
 	for iteration in range(12):
 		world.set_block(point, torch if iteration % 2 == 0 else 0)
 		await process_frame
@@ -66,6 +68,7 @@ func run() -> void:
 			check(torch_lights(world)[0].get_parent().get_instance_id() == node_id, "Rebuild replaced its chunk node")
 
 	world.start_world(id)
+
 	for frame in range(3): await process_frame
 	world.set_focus_position(Vector3(512, 48, 0))
 	await process_frame

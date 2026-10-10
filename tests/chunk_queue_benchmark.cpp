@@ -119,6 +119,7 @@ static std::pair<double, double> measure(int size, int amount, Drain drain) {
     std::sort(first.begin(), first.end()); std::sort(total.begin(), total.end());
     return {first[3], total[3]};
 }
+
 int main() {
     // Equality by position keeps the first version, rather than replacing it.
     Set versions;
@@ -128,6 +129,7 @@ int main() {
     versions.insert(old);
     versions.insert(newer);
     if (versions.size() != 1 || versions.begin()->version != 1) std::abort();
+
     std::puts("queue_size,batch,hash_first_us,deque_first_us,hash_drain_ms,deque_drain_ms");
     for (int size : {200, 1000, 10000}) for (int amount : {1, 2, 5, 100}) {
         auto h = measure<Set>(size, amount, current_drain);

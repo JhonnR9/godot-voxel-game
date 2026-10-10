@@ -70,6 +70,7 @@ func _build_dock() -> void:
 	_tint_field = ColorPickerButton.new()
 	_add_labeled_control(form, "Tint", _tint_field)
 	_add_labeled_label(form, "Texture keys (without extension)")
+
 	for face in ["side", "top", "bottom"]:
 		var field := LineEdit.new()
 		field.placeholder_text = "optional"
@@ -79,6 +80,7 @@ func _build_dock() -> void:
 	var flags_grid := GridContainer.new()
 	flags_grid.columns = 2
 	form.add_child(flags_grid)
+
 	for flag in FLAG_NAMES:
 		var checkbox := CheckBox.new()
 		checkbox.text = flag
@@ -138,6 +140,7 @@ func _load_registry() -> void:
 
 func _refresh_list() -> void:
 	_block_list.clear()
+
 	for block: Dictionary in _blocks:
 		_block_list.add_item("%03d  %s" % [int(block.get("id", 0)), str(block.get("name", "unnamed"))])
 
@@ -157,9 +160,11 @@ func _on_block_selected(index: int) -> void:
 	if tint.size() == 4:
 		_tint_field.color = Color(float(tint[0]), float(tint[1]), float(tint[2]), float(tint[3]))
 	var textures: Dictionary = block.get("textures", {})
+
 	for face in _texture_fields:
 		_texture_fields[face].text = str(textures.get(face, ""))
 	var flags: Array = block.get("flags", [])
+
 	for flag in _flag_fields:
 		_flag_fields[flag].button_pressed = flags.has(flag)
 
@@ -175,12 +180,14 @@ func _commit_fields() -> void:
 	var tint := _tint_field.color
 	block.tint = [tint.r, tint.g, tint.b, tint.a]
 	var textures := {}
+
 	for face in _texture_fields:
 		var value := str(_texture_fields[face].text).strip_edges()
 		if not value.is_empty():
 			textures[face] = value
 	block.textures = textures
 	var flags: Array[String] = []
+
 	for flag in _flag_fields:
 		if _flag_fields[flag].button_pressed:
 			flags.append(flag)
@@ -192,6 +199,7 @@ func _commit_fields() -> void:
 func _add_block() -> void:
 	_commit_fields()
 	var next_id := 0
+
 	for block: Dictionary in _blocks:
 		next_id = maxi(next_id, int(block.get("id", -1)) + 1)
 	if next_id > 1023:
@@ -253,6 +261,7 @@ func _save_and_generate() -> void:
 	get_editor_interface().get_resource_filesystem().scan()
 	_selected_index = -1
 	_refresh_list()
+
 	for index in range(_blocks.size()):
 		if int(_blocks[index].get("id", -1)) == selected_id:
 			_block_list.select(index)

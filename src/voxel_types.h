@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/array_mesh.hpp>
 
 namespace godot {
+
 enum class CubeFace : uint8_t {
 	F,
 	B,

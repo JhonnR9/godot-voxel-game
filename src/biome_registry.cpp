@@ -10,10 +10,12 @@ namespace godot {
 namespace {
 struct Reader {
 	String &error;
+
 	void fail(const String &message) {
 		if (error.is_empty())
 			error = message;
 	}
+
 	double number(const Dictionary &d, const char *key, double fallback, double lo, double hi) {
 		Variant v = d.get(key, fallback);
 		if (v.get_type() != Variant::INT && v.get_type() != Variant::FLOAT) {
@@ -27,12 +29,14 @@ struct Reader {
 		}
 		return n;
 	}
+
 	int integer(const Dictionary &d, const char *key, int fallback, int lo, int hi) {
 		double n = number(d, key, fallback, lo, hi);
 		if (std::floor(n) != n)
 			fail(String(key) + ": expected an integer");
 		return static_cast<int>(n);
 	}
+
 	Dictionary object(const Dictionary &d, const char *key) {
 		Variant v = d.get(key, Dictionary());
 		if (v.get_type() != Variant::DICTIONARY) {
@@ -41,6 +45,7 @@ struct Reader {
 		}
 		return v;
 	}
+
 	std::vector<Variant> array(const Dictionary &d, const char *key) {
 		Variant v = d.get(key, Array());
 		if (v.get_type() != Variant::ARRAY) {
@@ -58,6 +63,7 @@ struct Reader {
 			result.push_back(values[i]);
 		return result;
 	}
+
 	String string(const Dictionary &d, const char *key, const String &fallback) {
 		Variant v = d.get(key, fallback);
 		if (v.get_type() != Variant::STRING) {
@@ -66,6 +72,7 @@ struct Reader {
 		}
 		return v;
 	}
+
 	bool boolean(const Dictionary &d, const char *key, bool fallback) {
 		Variant v = d.get(key, fallback);
 		if (v.get_type() != Variant::BOOL) {
@@ -74,6 +81,7 @@ struct Reader {
 		}
 		return v;
 	}
+
 	uint16_t block(const Dictionary &d, const char *key, const char *fallback) {
 		const String name = string(d, key, fallback);
 		const uint16_t id = voxel::block_id_from_name(name.utf8().get_data());
@@ -83,12 +91,14 @@ struct Reader {
 		}
 		return id;
 	}
+
 	void climate(const Dictionary &d, float &lo, float &hi) {
 		lo = number(d, "climate_min", lo, 0, 1);
 		hi = number(d, "climate_max", hi, 0, 1);
 		if (lo >= hi)
 			fail("climate_min must be lower than climate_max");
 	}
+
 	std::vector<WeightedPlant> plants(const Dictionary &d, const char *key) {
 		std::vector<WeightedPlant> result;
 		for (const Variant &v : array(d, key)) {
@@ -110,6 +120,7 @@ struct Reader {
 		return result;
 	}
 };
+
 bool matches(float climate, float lo, float hi) {
 	return climate >= lo && (climate < hi || (hi == 1.0f && climate == 1.0f));
 }
@@ -123,6 +134,7 @@ const BiomeDefinition &BiomeRegistry::fallback_land(float climate) const {
 			best = &b;
 	return *best; // Validation requires at least one always available land biome.
 }
+
 const BiomeDefinition &BiomeRegistry::land_at(float climate, int64_t seed, int32_t x, int32_t z) const {
 	for (const auto &b : biomes)
 		if (b.kind == BiomeKind::LAND && matches(climate, b.climate_min, b.climate_max) &&
@@ -130,6 +142,7 @@ const BiomeDefinition &BiomeRegistry::land_at(float climate, int64_t seed, int32
 			return b;
 	return fallback_land(climate);
 }
+
 const BiomeDefinition *BiomeRegistry::overlay_at(BiomeKind kind, float climate, int64_t seed, int32_t x, int32_t z) const {
 	const BiomeDefinition *best = nullptr;
 	for (const auto &b : biomes)
@@ -138,6 +151,7 @@ const BiomeDefinition *BiomeRegistry::overlay_at(BiomeKind kind, float climate, 
 			best = &b;
 	return best;
 }
+
 void BiomeRegistry::relief_pair(float climate, const BiomeDefinition *&a, const BiomeDefinition *&b, float &blend) const {
 	a = b = nullptr;
 	for (const auto &entry : biomes)
@@ -153,6 +167,7 @@ void BiomeRegistry::relief_pair(float climate, const BiomeDefinition *&a, const 
 		b = a;
 	blend = a == b ? 0.0f : (climate - a->height_anchor) / (b->height_anchor - a->height_anchor);
 }
+
 int BiomeRegistry::max_tree_candidates() const {
 	int limit = 0;
 	for (const auto &b : biomes)
@@ -182,11 +197,13 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 	w.coast_blend_end	   = r.number(world, "coast_blend_end", 0.68, 0, 1);
 	if (w.coast_blend_start >= w.coast_blend_end)
 		r.fail("Invalid coast blend interval");
+
 	w.wet_coast_offset		= r.integer(world, "wet_coast_offset", -8, -64, 0);
 	w.dry_coast_offset		= r.integer(world, "dry_coast_offset", 1, 0, 64);
 	w.dry_coast_clamp		= r.number(world, "dry_coast_clamp", 0.85, 0, 1);
 	w.river_width			= r.number(world, "river_width", 0.07, 0.001, 1);
 	w.river_bed_offset		= r.integer(world, "river_bed_offset", -2, -64, -1);
+
 	const Dictionary noises = r.object(world, "noises");
 	auto noise				= [&](const char *name, TerrainNoiseProfile &profile) {
 		Dictionary d	  = r.object(noises, name);
@@ -199,6 +216,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 	noise("dune", w.dune);
 	noise("ocean", w.ocean);
 	noise("river", w.river);
+
 	std::set<int> ids;
 	std::set<std::string> names;
 	for (const Variant &value : r.array(data, "biomes")) {
@@ -231,6 +249,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 		b.priority				  = r.integer(selection, "priority", 0, -1000, 1000);
 		b.selection_height_offset = r.integer(selection, "height_max_offset", 2, -64, 64);
 		b.selection_influence	  = r.number(selection, "min_influence", 0.5, 0, 1);
+
 		const Dictionary relief	  = r.object(d, "relief");
 		b.height_anchor			  = r.number(relief, "anchor", 0, 0, 1);
 		b.height_scale			  = r.number(relief, "scale", 2.4, 0, 16);
@@ -246,6 +265,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 			b.relief_noise = ReliefNoise::TERRAIN;
 		else
 			r.fail("Unknown relief noise: " + relief_noise);
+
 		const Dictionary materials = r.object(d, "materials");
 		b.surface				   = r.block(materials, "surface", "grass");
 		b.soil					   = r.block(materials, "soil", "dirt");
@@ -261,6 +281,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 		b.surface_fill = r.block(d, "surface_fill", "water");
 		if (b.surface_fill != voxel::block_ids::water && !voxel::is_collidable(voxel::make_block(b.surface_fill)))
 			r.fail("surface_fill must be water or a solid block");
+
 		for (const Variant &v : r.array(d, "surface_overrides")) {
 			if (v.get_type() != Variant::DICTIONARY) {
 				r.fail("Surface override must be an object");
@@ -275,6 +296,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 			entry.soil_depth = r.integer(o, "soil_depth", -1, -1, 128);
 			b.surface_overrides.push_back(entry);
 		}
+
 		for (const Variant &v : r.array(d, "strata")) {
 			if (v.get_type() != Variant::DICTIONARY) {
 				r.fail("Stratum must be an object");
@@ -291,6 +313,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 			entry.max_y		= r.integer(layer, "max_y", 255, entry.min_y, 255);
 			b.strata.push_back(entry);
 		}
+
 		const Dictionary trees = r.object(d, "trees");
 		const String tree_shape = r.string(trees, "shape", "oak");
 		if (tree_shape == "oak")
@@ -310,6 +333,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 		if (!voxel::is_collidable(voxel::make_block(b.trees.trunk)) || !voxel::is_collidable(voxel::make_block(b.trees.leaves)))
 			r.fail("Tree trunk and leaves must be solid blocks");
 		r.climate(trees, b.trees.climate_min, b.trees.climate_max);
+
 		const Dictionary vegetation = r.object(d, "vegetation");
 		b.vegetation.patch_size		= r.integer(vegetation, "patch_size", 12, 1, 256);
 		b.vegetation.patch_chance = r.integer(vegetation, "patch_chance", 1000, 0, 1000);
@@ -325,13 +349,16 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 			r.fail("Vegetation coverage requires plants");
 		if (b.vegetation.flowers_max > 0 && b.vegetation.flowers.empty())
 			r.fail("Flower coverage requires flowers");
+
 		registry->biomes.push_back(std::move(b));
 	}
+
 	std::vector<const BiomeDefinition *> lands;
 	for (const auto &b : registry->biomes)
 		if (b.kind == BiomeKind::LAND)
 			lands.push_back(&b);
 	std::sort(lands.begin(), lands.end(), [](auto a, auto b) { return a->climate_min < b->climate_min; });
+
 	float end = 0;
 	std::set<float> anchors;
 	for (const auto *b : lands) {
@@ -341,6 +368,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 		if (!anchors.insert(b->height_anchor).second)
 			r.fail("Land relief anchors must be unique");
 	}
+
 	bool guaranteed_land = false;
 	for (const auto *b : lands)
 		if (b->rarity == 1)
@@ -349,6 +377,7 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 		r.fail("At least one land biome must have rarity 1 for fallback terrain");
 	if (lands.empty() || end != 1.0f)
 		r.fail("Land climate intervals must cover [0,1]");
+
 	if (!error.is_empty())
 		return nullptr;
 	return registry;
@@ -356,23 +385,29 @@ std::shared_ptr<const BiomeRegistry> BiomeRegistry::from_dictionary(const Dictio
 
 std::shared_ptr<const BiomeRegistry> BiomeRegistry::load(const String &path) {
 	Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+
 	String error;
 	std::shared_ptr<const BiomeRegistry> result;
+
 	if (file.is_null())
 		error = "Cannot open biome registry: " + path;
 	else {
 		Variant parsed = JSON::parse_string(file->get_as_text());
+
 		if (parsed.get_type() != Variant::DICTIONARY)
 			error = "Biome registry must be a JSON object";
 		else
 			result = from_dictionary(parsed, error);
 	}
+
 	if (!result) {
 		ERR_PRINT("Invalid biome registry '" + path + "': " + error + ". Using built-in defaults.");
 		return defaults();
 	}
+
 	return result;
 }
+
 std::shared_ptr<const BiomeRegistry> BiomeRegistry::defaults() {
 	static const auto fallback = []() {
 		auto r = std::make_shared<BiomeRegistry>();

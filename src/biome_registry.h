@@ -8,19 +8,23 @@
 #include <vector>
 
 namespace godot {
+
 enum class BiomeKind { LAND,
 					   OCEAN,
 					   RIVER,
 					   BEACH };
+
 enum class ReliefNoise { MOUNTAIN,
 						 DUNE,
 						 TERRAIN };
+
 struct WeightedPlant {
 	uint16_t block = 0;
 	int weight	   = 1;
 	int min_height = 1;
 	int max_height = 1;
 };
+
 struct VegetationProfile {
 	int patch_size	 = 12;
 	int patch_chance = 1000, cluster_radius = 0;
@@ -29,6 +33,7 @@ struct VegetationProfile {
 	float climate_min = 0.0f, climate_max = 1.0f;
 	std::vector<WeightedPlant> plants, flowers;
 };
+
 struct TreeProfile {
 	enum class Shape { OAK, PALM, PINE };
 	Shape shape = Shape::OAK;
@@ -36,16 +41,19 @@ struct TreeProfile {
 	float climate_min = 0.0f, climate_max = 1.0f;
 	uint16_t trunk = voxel::block_ids::oak_log, leaves = voxel::block_ids::oak_leaves;
 };
+
 struct SurfaceOverride {
 	float climate_min = 0.0f, climate_max = 1.0f;
 	uint16_t surface = 0;
 	int soil_depth	 = -1;
 };
+
 struct TerrainStratum {
 	uint16_t block = 0;
 	int min_depth = 1, max_depth = 65535;
 	int min_y = WORLD_BEDROCK_Y + 1, max_y = WORLD_MAX_CHUNK_Y * Chunk::SIZE_Y + Chunk::MAX_Y;
 };
+
 struct BiomeDefinition {
 	uint16_t id = 0;
 	std::string name;
@@ -67,10 +75,12 @@ struct BiomeDefinition {
 	TreeProfile trees;
 	VegetationProfile vegetation;
 };
+
 struct TerrainNoiseProfile {
 	float frequency;
 	int octaves;
 };
+
 struct TerrainWorldProfile {
 	int base_height = 24, sea_level = 24;
 	float amplitude		= 9.0f;
@@ -86,6 +96,7 @@ struct TerrainWorldProfile {
 };
 
 // Loaded/validated on the main thread. Workers share only a const snapshot.
+
 class BiomeRegistry {
 public:
 	TerrainWorldProfile world;

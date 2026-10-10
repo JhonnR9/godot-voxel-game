@@ -9,7 +9,7 @@ struct MeshResult {
 
 	ChunkMeshData geometry;
 	PackedVector3Array collision_faces;
-	PackedVector3Array torch_positions;
+	PackedVector3Array light_positions;
 	PackedVector3Array selection_positions;
 	Vector3i pos;
 	uint64_t version	= 0;
@@ -17,6 +17,7 @@ struct MeshResult {
 	uint64_t wait_us = 0, work_us = 0;
 
 };
+
 struct ChunkMeshJob {
 	Vector3i pos;
 	ChunkNeighbors neighbors;

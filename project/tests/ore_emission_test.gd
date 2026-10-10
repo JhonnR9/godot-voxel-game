@@ -25,6 +25,7 @@ func run() -> void:
 		assert(neutral > total * 0.1)
 		print(kind, ": ", emitting, "/", total, " inclusion pixels emit")
 	# Host rock and coal must remain non-emissive under either analytical mask.
+
 	for name: String in ["stone", "coal_ore"]:
 		var image: Image = load("res://textures/blocks/" + name + ".png").get_image()
 		var emitting := 0
@@ -37,6 +38,7 @@ func run() -> void:
 	var registry: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/block_registry.generated.json"))
 	# Additional block types may extend the registry without changing ore IDs.
 	assert(block_id("coal_ore") > 0, "Coal ore must be registered.")
+
 	for block: Dictionary in registry.blocks:
 		for layer: int in block.get("texture_layers", {}).values():
 			assert(layer >= 0 and layer < int(registry.water_texture_layer))

@@ -64,6 +64,7 @@ void ChunkPool::release(ChunkNode *chunk) {
 	}
 	_pool.push_back(chunk);
 }
+
 void ChunkPool::set_prewarm(const int count) {
 	_target_capacity = MAX(0, count);
 	if (!_owner_node) return;

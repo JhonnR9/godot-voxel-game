@@ -21,12 +21,15 @@ func run() -> void:
 	var ui = load("res://scenes/inventory_ui.tscn").instantiate()
 	root.add_child(ui)
 	manager.setup(player, ui)
+
 	for frame in range(4): await process_frame
+
 	for index in range(9):
 		check(ui.hotbar_grid.get_item_at(Vector2i(index, 0)) == null, "Hotbar starts prefilled.")
 	check(manager.get_selected_block_id() == 0, "Empty hotbar still selects a block.")
 	check(ui.hotbar_grid.get_child_count() == 9, "Hotbar has extra slot-number labels.")
 	manager.open_inventory()
+
 	for frame in range(4): await process_frame
 	check(manager.is_mouse_unlocked() and ui.inventory_panel.visible, "Player inventory did not open.")
 	ui.creative_panel.size = Vector2(500, 220)
@@ -39,6 +42,7 @@ func run() -> void:
 	var scroll_center: float = ui.creative_scroll.global_position.x + (ui.creative_scroll.size.x - ui.creative_scroll.get_v_scroll_bar().size.x) / 2.0
 	check(ui.creative_grid.size.x <= ui.creative_scroll.size.x, "Creative content does not fit window width.")
 	check(ui.creative_scroll.get_v_scroll_bar().visible, "Creative inventory does not show its scrollbar.")
+
 	for index in range(ui.blocks.size()):
 		var item = ui.creative_grid.get_item_at(Vector2i(index % ui.creative_grid.get_columns(), index / ui.creative_grid.get_columns()))
 		check(item != null and item.get_id() == ui.blocks[index].id, "Creative block missing.")
@@ -53,9 +57,11 @@ func run() -> void:
 	wheel.pressed = true
 	wheel.position = slot.global_position + slot.size / 2.0
 	root.push_input(wheel, true)
+
 	for frame in range(4): await process_frame
 	check(ui.creative_scroll.scroll_vertical > 0, "Wheel over an item did not scroll.")
 	ui.creative_scroll.scroll_vertical = 10000
+
 	for frame in range(4): await process_frame
 	var last: Control = ui.creative_grid.get_child(ui.blocks.size() - 1)
 	check(ui.creative_scroll.get_global_rect().encloses(last.get_global_rect()), "Last creative block is unreachable.")
@@ -72,6 +78,7 @@ func run() -> void:
 	release.pressed = false
 	release.position = drop_position
 	root.push_input(release, true)
+
 	for frame in range(4): await process_frame
 	check(ui.hotbar_grid.get_item_at(Vector2i.ZERO) != null, "Creative drag did not fill hotbar.")
 	check(manager.get_selected_block_id() == item.get_id(), "Selected block was not updated after drop.")
@@ -96,6 +103,7 @@ func run() -> void:
 	await move_mouse(storage_position)
 	release.position = storage_position
 	root.push_input(release, true)
+
 	for frame in range(4): await process_frame
 	check(ui.inventory_grid.get_item_at(Vector2i.ZERO).get_item_amount() == 99, "Merged stack exceeds or misses limit.")
 	check(ui.hotbar_grid.get_item_at(Vector2i.ZERO).get_item_amount() == 11, "Partial merge lost remaining items.")
@@ -110,9 +118,11 @@ func run() -> void:
 	check(ui.inventory_grid.get_item_at(Vector2i(1, 0)).get_item_amount() == 99 and ui.inventory_grid.get_item_at(Vector2i(2, 0)).get_item_amount() == 11, "Insertion failed to split overflow.")
 	check(not InventoryService.set_stack(ui.inventory_ids.storage, 0, item.get_id(), 119), "Full slot accepted overflowing items.")
 	# A full inventory rejects insertion without modifying any stack.
+
 	for index in range(27):
 		InventoryService.set_stack(ui.inventory_ids.storage, index, item.get_id(), 99)
 	check(not InventoryService.add_items(ui.inventory_ids.storage, item.get_id(), 20), "Full inventory accepted extra items.")
+
 	for index in range(27):
 		check(InventoryService.get_stack(ui.inventory_ids.storage, index).amount == 99, "Rejected insertion changed a stack.")
 	check(count_label[0].z_index > 0, "Stack quantity renders behind item icon.")
@@ -134,6 +144,7 @@ func run() -> void:
 	ui.restore_inventory(saved)
 	# Smaller windows keep the panels on screen and retain manually added items.
 	root.size = Vector2i(480, 360)
+
 	for frame in range(6): await process_frame
 	check(root.get_visible_rect().encloses(ui.creative_panel.get_global_rect()), "Creative panel overflows small viewport.")
 	check(root.get_visible_rect().encloses(ui.hotbar_panel.get_global_rect()), "Hotbar overflows small viewport.")

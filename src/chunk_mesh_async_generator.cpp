@@ -23,7 +23,7 @@ std::vector<MeshResult> ChunkMeshAsyncGenerator::run_batch(const std::vector<Chu
 		auto mesh		 = builder.build(job.neighbors);
 		results.push_back(
 				MeshResult{ mesh, builder.get_last_collision_faces(),
-						builder.get_torch_positions(), builder.get_selection_positions(),
+						builder.get_light_positions(), builder.get_selection_positions(),
 						job.pos, job.version, job.request_id,
 						start - job.queued_us, chunk_clock_us() - start });
 	}

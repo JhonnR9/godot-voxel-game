@@ -4,6 +4,7 @@ extends "res://tests/support/test_case.gd"
 # Run with an active renderer (without --headless).
 # Exercise the generated chunk mesh, including all face orientations and a
 # three-axis chunk boundary. No renderer-dependent screen-space AO is needed.
+
 func corner_visibility(world: Node, point: Vector3, normal: Vector3) -> float:
 	for child in world.get_children():
 		if not child is MeshInstance3D or child.mesh == null:
@@ -53,6 +54,7 @@ func run() -> void:
 		return
 	var stone := block_id("stone")
 	var directions := [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]
+
 	for i in directions.size():
 		var normal: Vector3 = directions[i]
 		var u := Vector3.FORWARD if normal.x != 0 or normal.y != 0 else Vector3.RIGHT
@@ -74,6 +76,7 @@ func run() -> void:
 	await wait_corner(world, diagonal, Vector3.UP, 2.0 / 3.0)
 	world.break_block(diagonal)
 	await wait_corner(world, diagonal, Vector3.UP, 1.0)
+
 	for transparent_name in ["water", "oak_leaves"]:
 		world.set_block(diagonal, block_id(transparent_name))
 		for frame in range(30): await process_frame
@@ -81,6 +84,7 @@ func run() -> void:
 		world.break_block(diagonal)
 	# Isolated cubes remain unoccluded; large open planes retain greedy meshing.
 	var floor_quads := 0
+
 	for child in world.get_children():
 		if not child is MeshInstance3D or child.mesh == null or child.position != Vector3.ZERO:
 			continue
@@ -91,6 +95,7 @@ func run() -> void:
 			if normals[i].y > 0.99 and is_equal_approx(vertices[i].y, 33.0):
 				floor_quads += 1
 	check(floor_quads == 1, "Unoccluded flat chunk should still merge to one top quad, got %s" % floor_quads)
+
 	for frame in range(60): await process_frame
 	print("Voxel AO tests: ", failures, " failures (six faces, diagonal chunk edits, transparent blocks, greedy merging).")
 	quit(1 if failures else 0)

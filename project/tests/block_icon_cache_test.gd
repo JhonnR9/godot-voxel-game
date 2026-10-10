@@ -7,6 +7,7 @@ func run() -> void:
 	var blocks: Array = JSON.parse_string(file.get_as_text()).blocks
 	var candidates: Array[Dictionary] = []
 	var count := 0
+
 	for entry: Dictionary in blocks:
 		if int(entry.id) == block_id("air"): continue
 		count += 1
@@ -20,6 +21,7 @@ func run() -> void:
 	var path := "user://cache/icon_test_" + str(Time.get_ticks_usec())
 	var first = CacheScript.new()
 	assert(first.prepare(blocks, path) == {"generated": count, "loaded": 0})
+
 	for block: Dictionary in blocks:
 		if int(block.id) == 0:
 			continue
@@ -37,6 +39,7 @@ func run() -> void:
 	assert(second.prepare(blocks, path) == {"generated": 1, "loaded": count - 1})
 	# Metadata/tint changes invalidate only the changed block.
 	var modified := blocks.duplicate(true)
+
 	for entry: Dictionary in modified:
 		if int(entry.id) == sample_id: entry.tint = [0.4, 0.5, 0.6, 1.0]
 	assert(second.prepare(modified, path) == {"generated": 1, "loaded": count - 1})
@@ -61,6 +64,7 @@ func run() -> void:
 	assert(item.get_icon() == startup.get_icon(item.get_id()))
 	inventory.free()
 	# Remove only this test's temporary files.
+
 	for block: Dictionary in blocks:
 		if int(block.id) != 0:
 			DirAccess.remove_absolute(path.path_join(str(int(block.id)) + ".png"))

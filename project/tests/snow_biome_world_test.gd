@@ -7,6 +7,7 @@ func run() -> void:
 	invalid.biomes[0].surface_fill = blocks_with_flag("crossed")[0].name
 	check(not VoxelAPI.validate_biome_registry(invalid).valid, "Non-solid surface fill accepted.")
 	var snow: Dictionary
+
 	for biome in data.biomes:
 		if biome.name == "snow": snow = biome.duplicate(true)
 	check(snow.trees.shape == "pine" and snow.surface_fill == "ice", "Snow pine/ice profile missing.")
@@ -54,6 +55,7 @@ func run() -> void:
 		else: check(trunks == 0 and leaves == 0, "Disabled snow trees were generated.")
 	# Full coastal influence must select a frozen ocean in cold climate and
 	# ordinary water in warm climate, using actual generated blocks.
+
 	for cold in [true, false]:
 		var coast := data.duplicate(true)
 		coast.world.climate_start = 1 if cold else -1
@@ -79,6 +81,7 @@ func run() -> void:
 						var p := Vector3(x, y, z)
 						check(world.get_block_type_at(p) == fill, "Generated ice/water disagrees at %s" % p)
 						check(world.is_water_at(p) == not cold, "Solid ice was treated as swimming water.")
+
 	for frame in range(60): await process_frame
 	print("Snow biome checks finished: ", failures, " failures.")
 	quit(1 if failures else 0)

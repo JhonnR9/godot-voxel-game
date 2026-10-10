@@ -4,12 +4,14 @@ func run() -> void:
 	var data := biome_registry()
 	var profiles := {}
 	var palettes := {}
+
 	for entry: Dictionary in data.biomes:
 		profiles[int(entry.id)] = entry
 		var allowed: Array[int] = [block_id(entry.materials.surface)]
 		for override: Dictionary in entry.get("surface_overrides", []):
 			allowed.append(block_id(override.surface))
 		palettes[int(entry.id)] = allowed
+
 	for seed in test_seeds():
 		var world := make_world("res://data/biome_registry.json", Vector3(0, int(data.world.base_height) + 6, 0), "Registry distribution %s" % seed, seed)
 		if not await wait_for_world(world):

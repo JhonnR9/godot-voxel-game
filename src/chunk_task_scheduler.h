@@ -23,7 +23,9 @@ inline uint64_t chunk_clock_us() {
 // Submission/state are owned by the main thread. Workers only publish immutable
 // results. At most one executing job per position; pending edits replace a job.
 template <typename Job, typename Result>
+
 class ChunkTaskScheduler {
+
 	using Runner = std::vector<Result> (*)(const std::vector<Job> &);
 	struct Batch {
 		ChunkTaskScheduler *owner;

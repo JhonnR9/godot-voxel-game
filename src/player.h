@@ -6,7 +6,9 @@
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 
 namespace godot {
+
 class VoxelAPI;
+
 class Player : public CharacterBody3D {
 	GDCLASS(Player, CharacterBody3D)
 

@@ -40,6 +40,7 @@ public:
 
 // Small entry point retained for callers that want to generate a chunk with a
 // configured, reusable pass pipeline.
+
 class ChunkGenerator {
 public:
 	static Chunk generate(const Vector3i &chunk_pos, const TerrainSettings &settings,

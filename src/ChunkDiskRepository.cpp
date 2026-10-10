@@ -20,6 +20,7 @@ void ChunkDiskRepository::wait_for_saves() {
         for (auto id : save_tasks) pool->wait_for_task_completion(id);
     save_tasks.clear();
 }
+
 void ChunkDiskRepository::set_current_world(int64_t p_id) {
     wait_for_saves();
 	current_world_id = p_id;

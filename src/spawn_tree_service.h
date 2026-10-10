@@ -15,6 +15,7 @@ namespace godot {
 // When decorating chunk C, we calculate the trees for the 9 neighboring columns (3x3)
 // and write only the blocks that fall within C. This ensures that trees on the boundary
 // are complete and reappear identically if the chunk is unloaded and reloaded.
+
 class TreeGenerationPass final : public ChunkGenerationPass {
 public:
 	explicit TreeGenerationPass(int64_t p_seed) : _seed(p_seed) {}

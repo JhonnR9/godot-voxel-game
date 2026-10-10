@@ -11,10 +11,12 @@ int kind_at(const std::vector<voxel::UndergroundDeposit> &deposits, double x,dou
 
 int main() {
     std::mt19937 random(82);
+
     for (int64_t seed : {0,42,-19,123456}) {
         const auto large=voxel::underground_deposits(seed,-128,-224,-128,128,32,128);
         const auto again=voxel::underground_deposits(seed,-128,-224,-128,128,32,128);
         assert(large.size()==again.size());
+
         for (size_t i=0;i<large.size();++i) {
             const auto &d=large[i];
             assert(d.x==again[i].x && d.y==again[i].y && d.z==again[i].z && d.kind==again[i].kind);
@@ -24,6 +26,7 @@ int main() {
             if (d.kind==voxel::DepositKind::DIAMOND) assert(d.y<=-80);
             if (d.kind==voxel::DepositKind::DIRT) assert(d.y>=-96 && d.y<=48);
         }
+
         std::array<int,4> counts{};
         for (int i=0;i<24000;++i) {
             const int x=static_cast<int>(random()%256)-128;

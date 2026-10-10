@@ -188,6 +188,7 @@ void TreeGenerationPass::apply(ChunkGenerationContext &context) const {
 						put(wx, base_y + dy, wz, log_block, true, dy == -1);
 					continue;
 				}
+
 				if (candidate.profile.shape == TreeProfile::Shape::PALM) {
 					const int top = base_y + trunk_h - 1;
 					put(wx, top + 1, wz, leaves_block, false);

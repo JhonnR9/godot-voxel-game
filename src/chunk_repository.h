@@ -11,6 +11,7 @@
 #include <mutex>
 
 namespace godot {
+
 struct Chunk;
 
 
@@ -33,6 +34,7 @@ class ChunkRepository : public RefCounted {
 	HashSet<Vector3i> _dirty_regions;
 
 protected:
+
 	static void _bind_methods();
 
 public:

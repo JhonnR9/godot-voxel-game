@@ -9,6 +9,7 @@ func run() -> void:
 	coast.world.climate_span = 0.001
 	coast.world.dry_coast_start = 1
 	coast.world.dry_coast_span = 0.001
+
 	for b in coast.biomes:
 		b.trees = {}
 		b.vegetation = {}
@@ -33,6 +34,7 @@ func run() -> void:
 	inland.biomes = [temperate, dry]
 	inland.biomes[0].selection.climate_min = 0
 	inland.biomes[0].selection.climate_max = dry_boundary
+
 	for b in inland.biomes:
 		b.trees = {}
 		b.vegetation = {}
@@ -43,6 +45,7 @@ func run() -> void:
 	var grass := block_id(temperate.materials.surface)
 	var dirt := block_id(temperate.surface_overrides[0].surface)
 	var grass_boundary: float = inland.biomes[0].surface_overrides[0].climate_min
+
 	for z in range(-2048, 2049, 16):
 		for x in range(-2048, 2049, 16):
 			var c: Dictionary = land.sample_terrain_column(Vector2i(x, z))
@@ -51,8 +54,10 @@ func run() -> void:
 			if c.climate >= grass_boundary and c.surface_block == grass: mixed.grass_after = true
 			if c.climate < grass_boundary and c.surface_block == dirt: mixed.dirt_before = true
 			check(c == land.sample_terrain_column(Vector2i(x, z)), "Material transition sampling is not deterministic.")
+
 	for key in mixed:
 		check(mixed[key], "Missing material mixture across climate boundary: " + key)
+
 	for frame in range(60):
 		await process_frame
 	print("Terrain transition world checks finished: ", failures, " failures.")

@@ -9,9 +9,13 @@
 #include <vector>
 
 namespace godot {
+
 class Label;
+
 class Panel;
+
 class TextureRect;
+
 class InputEvent;
 
 class GridInventory final : public Control {
@@ -31,6 +35,7 @@ class GridInventory final : public Control {
 	HashMap<int64_t, Slot> _cells;
 	int _rows				  = 1;
 	int _columns			  = 9;
+
 	Size2i _slot_size		  = Size2i(64, 64);
 	Size2i _slot_margin		  = Size2i(3, 3);
 	Size2i _grid_padding	  = Size2i(6, 6);
@@ -43,6 +48,7 @@ class GridInventory final : public Control {
 	int _hidden_slot = -1;
 	Dictionary _drag_payload;
 	bool _drop_allowed = false;
+
 	int _slot_index(const Point2i &cell) const;
 
 	Ref<StyleBox> _background;

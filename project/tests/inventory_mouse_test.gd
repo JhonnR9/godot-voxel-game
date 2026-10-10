@@ -8,6 +8,7 @@ func click_at(point: Vector2) -> void:
 	motion.position = point
 	motion.global_position = point
 	root.push_input(motion, true)
+
 	for pressed in [true, false]:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
@@ -56,6 +57,7 @@ func run() -> void:
 	root.add_child(player)
 	player.set_physics_process(false)
 	var ui = player.get_node("InventoryCanvas/InventoryUI")
+
 	for frame in range(4): await process_frame
 	check(not manager.is_mouse_unlocked(), "Starts controlling character")
 	var key := InputEventKey.new()
@@ -89,6 +91,7 @@ func run() -> void:
 	check(not manager.is_mouse_unlocked(), "Second F1 returns character control")
 	check(ui.inventory_panel.visible and ui.creative_panel.visible, "Windows remain open while playing")
 	check(ui.creative_panel.get_rect() == rect, "F1 retains chosen window placement")
+
 	for control in ui.find_children("*", "Control", true, false):
 		check(control.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Captured mouse bypasses " + str(control.get_path()))
 	player._unhandled_input(motion)

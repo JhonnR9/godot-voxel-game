@@ -40,6 +40,7 @@ PackedInt64Array SaveService::get_saved_worlds_array() {
 
 	return result;
 }
+
 Dictionary SaveService::load_world_model_dict(int64_t p_id) {
 	const auto [seed, name, id] = load_world_model(p_id);
 
@@ -92,6 +93,7 @@ WorldModel SaveService::load_world_model(int64_t p_id) {
 
 	return model;
 }
+
 void SaveService::delete_world(int64_t p_id) {
 	const String world_dir = get_world_dir(p_id);
 

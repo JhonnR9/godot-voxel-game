@@ -63,6 +63,7 @@ void GridInventory::_sync_slot(Slot &slot) {
 			slot.icon->queue_free();
 			slot.icon = nullptr;
 		}
+
 		if (slot.count_label)
 			slot.count_label->set_text(String());
 		if (slot.panel)
@@ -203,12 +204,14 @@ Variant GridInventory::_make_drag_data(const Vector2 &, const Point2i &cell) {
 	set_drag_preview(preview);
 	return _drag_payload;
 }
+
 bool GridInventory::_accept_drop_data(const Vector2 &, const Variant &data, const Point2i &cell) {
 	_drop_allowed = false;
 	if (_interaction_enabled && data.get_type() == Variant::DICTIONARY)
 		emit_signal("drop_hovered", data, _slot_index(cell));
 	return _drop_allowed;
 }
+
 void GridInventory::_handle_drop_data(const Vector2 &, const Variant &data, const Point2i &cell) {
 	if (_interaction_enabled && data.get_type() == Variant::DICTIONARY)
 		emit_signal("drop_requested", data, _slot_index(cell));
@@ -273,6 +276,7 @@ void GridInventory::set_slot_count(int count) {
 	_items.resize(count);
 	_generate_grid();
 }
+
 void GridInventory::set_item_view(int index, const Ref<ItemView> &item) {
 	if (index < 0 || index >= int(_items.size()))
 		return;
@@ -282,6 +286,7 @@ void GridInventory::set_item_view(int index, const Ref<ItemView> &item) {
 		_sync_slot(*slot);
 	emit_signal("item_changed", cell, _items[index]);
 }
+
 void GridInventory::set_hidden_slot(int index) {
 	int previous = _hidden_slot;
 	_hidden_slot = index;
@@ -290,6 +295,7 @@ void GridInventory::set_hidden_slot(int index) {
 			if (Slot *slot = _cells.getptr(_make_key(i % _columns, i / _columns)))
 				_sync_slot(*slot);
 }
+
 Ref<ItemView> GridInventory::get_item_at(const Point2i &cell) const {
 	const int index = _slot_index(cell);
 	return index >= 0 && index < int(_items.size()) && _items[index].is_valid() ? _items[index]->duplicate_item() : Ref<ItemView>();
@@ -324,6 +330,7 @@ void GridInventory::set_rows(const int value) {
 	_rows = MAX(1, value);
 	_generate_grid();
 }
+
 void GridInventory::set_columns(const int value) {
 	const int columns = MAX(1, value);
 	if (columns == _columns)
@@ -334,14 +341,17 @@ void GridInventory::set_columns(const int value) {
 		_selected_cell = Point2i(selected_index % _columns, selected_index / _columns);
 	_generate_grid();
 }
+
 void GridInventory::set_slot_size(const Size2i &value) {
 	_slot_size = value;
 	_generate_grid();
 }
+
 void GridInventory::set_slot_margin(const Size2i &value) {
 	_slot_margin = value;
 	_generate_grid();
 }
+
 void GridInventory::set_grid_padding(const Size2i &value) {
 	_grid_padding = value;
 	_generate_grid();
@@ -353,6 +363,7 @@ void GridInventory::set_background(const Ref<StyleBox> &value) {
 	_connect_style_signal(_background);
 	queue_redraw();
 }
+
 void GridInventory::set_item_frame(const Ref<StyleBox> &value) {
 	_disconnect_style_signal(_item_frame);
 	_item_frame = value;
@@ -360,6 +371,7 @@ void GridInventory::set_item_frame(const Ref<StyleBox> &value) {
 	for (KeyValue<int64_t, Slot> &entry : _cells)
 		_apply_slot_style(entry.value);
 }
+
 void GridInventory::set_item_frame_hover(const Ref<StyleBox> &value) {
 	_disconnect_style_signal(_item_frame_hover);
 	_item_frame_hover = value;
@@ -367,6 +379,7 @@ void GridInventory::set_item_frame_hover(const Ref<StyleBox> &value) {
 	for (KeyValue<int64_t, Slot> &entry : _cells)
 		_apply_slot_style(entry.value);
 }
+
 void GridInventory::set_item_frame_selected(const Ref<StyleBox> &value) {
 	_disconnect_style_signal(_item_frame_selected);
 	_item_frame_selected = value;
@@ -374,6 +387,7 @@ void GridInventory::set_item_frame_selected(const Ref<StyleBox> &value) {
 	for (KeyValue<int64_t, Slot> &entry : _cells)
 		_apply_slot_style(entry.value);
 }
+
 void GridInventory::set_count_label_settings(const Ref<LabelSettings> &value) {
 	if (_count_label_settings.is_valid()) {
 		Callable changed = callable_mp(this, &GridInventory::_on_label_settings_changed);

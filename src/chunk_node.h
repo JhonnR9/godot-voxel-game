@@ -15,12 +15,14 @@
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 namespace godot {
+
 class World;
 
 class ChunkNode : public MeshInstance3D {
 	GDCLASS(ChunkNode, MeshInstance3D)
 
 public:
+
 	void  _enter_tree() override;
 
 protected:
@@ -37,15 +39,15 @@ private:
 	Ref<ConcavePolygonShape3D> _shape;
 	Ref<Material> _material;
 	Ref<Material> _water_material;
-	std::vector<OmniLight3D *> _torch_lights;
-    PackedVector3Array _torch_positions;
+	std::vector<OmniLight3D *> _lights;
+    PackedVector3Array _light_positions;
 
 	void _setup();
 
 public:
 	void set_collision_faces(const PackedVector3Array&collision_faces);
 	void set_selection_positions(const PackedVector3Array &positions);
-	void set_torch_positions(const PackedVector3Array &positions);
+	void set_light_positions(const PackedVector3Array &positions);
 	Ref<Material> get_material() {
 		return _material;
 	}

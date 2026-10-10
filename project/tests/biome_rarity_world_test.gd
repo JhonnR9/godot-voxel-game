@@ -13,6 +13,7 @@ func run() -> void:
 	var levels := rarity_levels(int(target.get("rarity", 1)))
 	var previous: Dictionary = {}
 	var baseline := 0
+
 	for rarity in levels:
 		var config := data.duplicate(true)
 		var preferred := target.duplicate(true)

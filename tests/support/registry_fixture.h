@@ -10,15 +10,18 @@
 #include <vector>
 
 namespace test_registry {
+
 struct Plant {
 	uint16_t block;
 	int weight, min_height, max_height;
 };
+
 struct Profile {
 	int patch_size = 12, patch_chance = 1000, cluster_radius = 0;
 	int coverage_min = 0, coverage_max = 0, flowers_min = 0, flowers_max = 0;
 	std::vector<Plant> plants, flowers;
 };
+
 struct Biome {
 	uint16_t id;
 	std::string name;
@@ -26,6 +29,7 @@ struct Biome {
 	float climate_max;
 	std::string surface_fill;
 };
+
 struct Registry {
 	int sea_level = 0, wet_coast_offset = 0, dry_coast_offset = 0;
 	std::vector<Biome> biomes;

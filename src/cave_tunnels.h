@@ -7,11 +7,14 @@
 #include <vector>
 
 namespace voxel {
+
 struct CavePoint { double x, y, z; };
+
 struct CaveSegment { CavePoint a, b; double radius; };
 
 // Stateless regional worms: world coordinates and seed completely determine
 // geometry. No noise thresholds, chunk-local RNG, or shared worker state.
+
 class CaveTunnels {
     uint64_t state;
     explicit CaveTunnels(uint64_t seed) : state(seed) {}

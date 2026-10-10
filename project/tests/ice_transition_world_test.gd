@@ -7,6 +7,7 @@ func run() -> void:
 	data.world.coast_span = 0.001
 	data.world.dry_coast_start = 1
 	data.world.dry_coast_span = 0.001
+
 	for biome in data.biomes:
 		biome.trees = {}
 		biome.vegetation = {}
@@ -19,6 +20,7 @@ func run() -> void:
 	var freezing_boundary := float(biome("frozen_ocean").selection.climate_max)
 	var focus := Vector2i.ZERO
 	var found := false
+
 	for z in range(-4096, 4097, 32):
 		for x in range(-4096, 4097, 32):
 			var weight := smoothstep(0.0, 1.0, (climate.get_noise_2d(x, z) - data.world.climate_start) / data.world.climate_span)
@@ -52,6 +54,7 @@ func run() -> void:
 					check(world.get_block_type_at(Vector3(x, y, z)) == expected, "Ice terrace has a gap, floating cap or missing water at %s" % Vector3i(x, y, z))
 	check(ice_columns > 50 and terraces > 50, "Freezing boundary does not lower ice toward the bed.")
 	check(heights.size() >= 3, "Ice edge does not form several terrace heights.")
+
 	for frame in range(60): await process_frame
 	print("Ice transition checks finished: ", failures, " failures; ", ice_columns, " ice / ", water_columns, " water columns.")
 	quit(1 if failures else 0)

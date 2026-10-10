@@ -7,7 +7,9 @@ func run() -> void:
 	var world: int = SaveService.create_world(42, "Legacy inventory migration")
 	var full_hotbar: Array = []
 	var full_storage: Array = []
+
 	for index in range(9): full_hotbar.append({"id": block_id("grass"), "amount": 99})
+
 	for index in range(27): full_storage.append({"id": block_id("grass"), "amount": 99})
 	SaveService.save_world_section(world, "player", {"position": [1, 2, 3], "inventory": {"hotbar": full_hotbar, "storage": full_storage, "craft": [{"id": block_id("dirt"), "amount": 7}], "selected_slot": 3}})
 	session.load_world(world)

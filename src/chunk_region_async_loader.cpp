@@ -4,6 +4,7 @@
 namespace godot {
 void ChunkRegionAsyncLoader::_bind_methods() {
 }
+
 void ChunkRegionAsyncLoader::queue_async_load_region(Vector3i p_pos) {
     auto *pool = WorkerThreadPool::get_singleton();
     for (auto it = tasks.begin(); it != tasks.end();) {
@@ -43,6 +44,7 @@ void ChunkRegionAsyncLoader::reset() {
     loaded_regions.clear();
     loading_regions.clear();
 }
+
 bool ChunkRegionAsyncLoader::has_loaded_region(Vector3i p_pos) {
 	std::lock_guard lock(loaded_regions_mutex);
 	return loaded_regions.has(p_pos);

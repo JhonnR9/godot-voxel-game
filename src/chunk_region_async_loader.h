@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace godot {
+
 struct RegionLoadJob {
 	Vector3i pos;
 	Ref<ChunkDiskRepository> repo;

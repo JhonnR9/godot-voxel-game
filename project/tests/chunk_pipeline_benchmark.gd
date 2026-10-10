@@ -2,6 +2,7 @@ extends "res://tests/support/test_case.gd"
 
 func run() -> void:
 	var rows: Array[Dictionary] = []
+
 	for batch in [1, 2, 4, 8]:
 		for trial in range(3):
 			var world: Node = ClassDB.instantiate("VoxelAPI")
@@ -29,6 +30,7 @@ func run() -> void:
 			rows.append({"batch": batch, "trial": trial, "initial_ms": initial_ms,
 				"drain_ms": (Time.get_ticks_usec() - start) / 1000.0, "stats": stats})
 			world.free()
+
 	for frame in range(2): await process_frame
 	print("CHUNK_BATCH_BENCHMARK=", JSON.stringify(rows))
 	quit(0)

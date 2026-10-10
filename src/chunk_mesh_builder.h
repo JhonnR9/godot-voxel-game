@@ -14,6 +14,7 @@
 #include <array>
 
 namespace godot {
+
 struct ChunkNeighbors {
 	// Full one-chunk halo for corner AO (including diagonal neighbours).
 	std::array<std::shared_ptr<Chunk>, 27> halo{};
@@ -44,12 +45,13 @@ struct ChunkMeshData {
     bool has_opaque = false;
     bool has_transparent = false;
 };
+
 class ChunkMeshBuilder {
 	VoxelMesher opaque_mesher;
     std::vector<uint8_t> mask, visited;
     std::vector<std::array<float, 4>> ao;
 	VoxelMesher transparent_mesher;
-	PackedVector3Array torch_positions;
+	PackedVector3Array light_positions;
 	PackedVector3Array selection_positions;
 	VoxelMesher &_get_mesher(voxel::Block block);
 	void _add_faces(const ChunkNeighbors &neighbors, CubeFace face);
@@ -68,7 +70,7 @@ public:
     static std::shared_ptr<const ChunkMeshMetadata> load_metadata();
 	ChunkMeshData build(const ChunkNeighbors &neighbors);
 	PackedVector3Array get_selection_positions() const { return selection_positions; }
-	PackedVector3Array get_torch_positions() const { return torch_positions; }
+	PackedVector3Array get_light_positions() const { return light_positions; }
 
 	static bool _is_air(const ChunkNeighbors &n, int x, int y, int z);
 
