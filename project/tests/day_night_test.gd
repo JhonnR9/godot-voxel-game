@@ -1,11 +1,8 @@
-extends SceneTree
+extends "res://tests/support/test_case.gd"
 
-const Cycle = preload("res://scenes/directional_light_3d.gd")
+const Cycle = preload("res://scripts/directional_light_3d.gd")
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-func _run() -> void:
+func run() -> void:
 	var scene := Node3D.new()
 	var world_environment := WorldEnvironment.new()
 	world_environment.name = "WorldEnvironment"

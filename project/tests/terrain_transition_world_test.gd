@@ -1,7 +1,7 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 func run() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	# Force dry climate and full coastal influence. The old desert clamp kept
 	# this above sea level and skipped ocean selection altogether.
 	var coast := data.duplicate(true)
@@ -19,7 +19,7 @@ func run() -> void:
 			for x in [-17, -16, -1, 0, 15, 16, 17]:
 				var c: Dictionary = world.sample_terrain_column(Vector2i(x, z))
 				check(c.biome_name == "ocean", "Dry coast failed to join the ocean.")
-				check(c.height == c.water_level - 8 and c.surface_water, "Dry ocean depth/water incorrect.")
+				check(c.height == c.water_level + int(coast.world.wet_coast_offset) and c.surface_water, "Dry ocean depth/water incorrect.")
 				check(world.get_block_type_at(Vector3(x, c.height + 1, z)) == block_id("water"), "Dry coast ocean was not filled with water.")
 	var inland := data.duplicate(true)
 	inland.world.coast_start = -1
@@ -27,9 +27,12 @@ func run() -> void:
 	inland.world.coast_span = 0.001
 	inland.world.dry_coast_span = 0.001
 	inland.world.sea_level = 0
-	inland.biomes = inland.biomes.slice(0, 2)
+	var dry := biome("desert")
+	var temperate := biome("mountains")
+	var dry_boundary := float(dry.selection.climate_min)
+	inland.biomes = [temperate, dry]
 	inland.biomes[0].selection.climate_min = 0
-	inland.biomes[0].selection.climate_max = 0.68
+	inland.biomes[0].selection.climate_max = dry_boundary
 	for b in inland.biomes:
 		b.trees = {}
 		b.vegetation = {}
@@ -37,14 +40,14 @@ func run() -> void:
 	var land := make_world("user://transition_inland.json", Vector3(0, 32, 0), "Material transition test")
 	await wait_for_world(land)
 	var mixed := {"sand_before": false, "dirt_after": false, "grass_after": false, "dirt_before": false}
-	var grass := block_id("grass")
-	var dirt := block_id("dirt")
+	var grass := block_id(temperate.materials.surface)
+	var dirt := block_id(temperate.surface_overrides[0].surface)
 	var grass_boundary: float = inland.biomes[0].surface_overrides[0].climate_min
 	for z in range(-2048, 2049, 16):
 		for x in range(-2048, 2049, 16):
 			var c: Dictionary = land.sample_terrain_column(Vector2i(x, z))
-			if c.climate < 0.68 and c.biome_name == "desert": mixed.sand_before = true
-			if c.climate >= 0.68 and c.biome_name == "mountains": mixed.dirt_after = true
+			if c.climate < dry_boundary and c.biome_name == "desert": mixed.sand_before = true
+			if c.climate >= dry_boundary and c.biome_name == "mountains": mixed.dirt_after = true
 			if c.climate >= grass_boundary and c.surface_block == grass: mixed.grass_after = true
 			if c.climate < grass_boundary and c.surface_block == dirt: mixed.dirt_before = true
 			check(c == land.sample_terrain_column(Vector2i(x, z)), "Material transition sampling is not deterministic.")

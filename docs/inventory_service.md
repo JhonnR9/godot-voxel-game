@@ -1,14 +1,14 @@
-# Inventários: núcleo lógico e apresentação
+# Inventories: logical core and presentation
 
-## Responsabilidades
+## Responsibilities
 
-- `src/inventory_service.*`: singleton C++ genérico com registro por ID, capacidade, slots `{id, amount}`, limite por tipo e revisão. Não conhece nós, grids, ItemView, blocos, jogador, mundo, mouse, receitas ou arquivos. Usa os tipos de valor e sinais da Godot como interface com GDScript; não guarda ponteiros de nodes.
-- `inventory_session.gd`: autoload que conhece o jogo. Registra os tipos de item, cria UUIDs, define hotbar/storage/catálogo criativo, produz ItemViews e salva/carrega registros por mundo através de SaveService.
-- `inventory_drag_controller.gd`: associa grids a UUIDs usando referências fracas, acompanha o arraste e chama o núcleo. Observa notificações e reconstrói as representações.
-- `GridInventory`: apresenta snapshots de ItemView e informa eventos da GUI. Colunas, ícone, contador, tooltip e preview são visuais. Não consulta o serviço nem executa regras de inventário.
-- `inventory_manager.gd`: autoload de controle do mouse/F1 e seleção da hotbar. A seleção consulta dados lógicos, independentemente da apresentação.
+- `src/inventory_service.*`: a generic C++ singleton with registration by ID, capacity, `{id, amount}` slots, per-type limits, and revisions. It has no knowledge of nodes, grids, ItemView, blocks, the player, worlds, the mouse, recipes, or files. It uses Godot value types and signals to interface with GDScript and stores no node pointers.
+- `inventory_session.gd`: the autoload that knows about the game. It registers item types, creates UUIDs, defines the hotbar/storage/creative catalog, produces ItemViews, and saves/loads world records through SaveService.
+- `inventory_drag_controller.gd`: associates grids with UUIDs using weak references, tracks dragging, and calls the core. It observes notifications and rebuilds representations.
+- `GridInventory`: presents ItemView snapshots and reports GUI events. Columns, icons, counters, tooltips, and previews are visual. It does not query the service or execute inventory rules.
+- `inventory_manager.gd`: the autoload for mouse/F1 control and hotbar selection. Selection queries logical data independently of presentation.
 
-## Cadastro e vínculo
+## Registration and binding
 
 ```gdscript
 var uuid := InventorySession.create_uuid()
@@ -16,42 +16,42 @@ InventorySession.register_inventory(uuid, 27)
 drag_controller.bind_grid(grid, uuid)
 ```
 
-O cadastro no núcleo é puramente lógico. O adaptador GDScript associa registros persistentes ao mundo atual. Duas grids podem representar o mesmo UUID com layouts diferentes. Fechar ou destruir uma grid não remove o cadastro nem os itens.
+Registration in the core is purely logical. The GDScript adapter associates persistent records with the current world. Two grids can represent the same UUID with different layouts. Closing or destroying a grid does not remove its registration or items.
 
-Para registros sem persistência do jogo, use `InventoryService.register_inventory(id, capacity, copy_source)` diretamente. O núcleo aceita um ID estável fornecido pelo chamador e tipos registrados com `register_item_type(item_id, stack_limit)`. Não impõe a geração de UUID nem um limite universal de 99; essa configuração pertence ao jogo.
+For records without game persistence, use `InventoryService.register_inventory(id, capacity, copy_source)` directly. The core accepts a stable caller-provided ID and types registered with `register_item_type(item_id, stack_limit)`. It does not require UUID generation or a universal limit of 99; that configuration belongs to the game.
 
-## Fluxo de arraste
+## Drag flow
 
-1. A grid emite `drag_started(index)` com índice linear estável.
-2. O controlador consulta o UUID associado e guarda origem, quantidade e revisão. Entrega à GUI apenas um token transitório. A representação da origem fica escondida; seus dados continuam no núcleo e nos snapshots de salvamento.
-3. O encaminhamento nativo de drag-and-drop da Godot identifica a grid/célula sob o mouse. A grid emite `drop_hovered(payload, index)` e `drop_requested(payload, index)`.
-4. O controlador verifica token, visibilidade e interação das views. Solicita `transfer(source, from, target, to, amount, revision)` ao núcleo.
-5. O núcleo revalida índices, quantidade, revisão e compatibilidade. Confirma todas as alterações antes de emitir `inventory_changed(uuid, index)`. A prévia `can_transfer` nunca substitui essa validação final.
-6. O controlador lê os dados confirmados e atualiza todas as grids vinculadas. Índice -1 indica atualização de vários slots.
+1. The grid emits `drag_started(index)` with a stable linear index.
+2. The controller queries the associated UUID and stores the source, amount, and revision. It gives the GUI only a transient token. The source representation is hidden; its data remains in the core and save snapshots.
+3. Godot's native drag-and-drop forwarding identifies the grid/cell under the mouse. The grid emits `drop_hovered(payload, index)` and `drop_requested(payload, index)`.
+4. The controller checks the token, visibility, and interaction state of the views. It requests `transfer(source, from, target, to, amount, revision)` from the core.
+5. The core revalidates indices, amount, revision, and compatibility. It commits all changes before emitting `inventory_changed(uuid, index)`. The `can_transfer` preview never replaces this final validation.
+6. The controller reads committed data and updates all bound grids. Index -1 indicates a multiple-slot update.
 
-Empilhamento pode mover somente o que cabe, mantendo a sobra na origem. Troca de tipos diferentes exige a pilha inteira. Fontes configuradas como cópia alimentam inventários sem consumir seu conteúdo e rejeitam entradas. `add_items` é uma inserção integral: capacidade insuficiente não altera nenhum slot.
+Stacking can move only what fits, leaving the remainder at the source. Swapping different types requires the full stack. Sources configured for copying supply inventories without consuming their contents and reject incoming items. `add_items` is an all-or-nothing insertion: insufficient capacity changes no slots.
 
-Drop inválido, destino cheio, F1, fechamento da origem ou fim do gesto sem destino cancelam o estado transitório. A atualização restaura ID, quantidade, nome, categoria, ícone e tooltip a partir dos dados atuais. Uma alteração da origem durante o arraste invalida a revisão anterior. O controlador consome o token e impede reaproveitamento após conclusão/cancelamento.
+An invalid drop, full destination, F1, closing the source, or ending a gesture without a destination cancels transient state. Refreshing restores the ID, amount, name, category, icon, and tooltip from current data. A source mutation during dragging invalidates the previous revision. The controller consumes the token and prevents reuse after completion/cancellation.
 
-O núcleo executa essas operações sincronamente na thread principal. Atomicidade aqui significa que a validação antecede a mutação e que observadores recebem sinais somente depois de ambos os inventários terem sido atualizados; a API não oferece acesso concorrente por workers.
+The core executes these operations synchronously on the main thread. Atomicity here means validation precedes mutation and observers receive signals only after both inventories have been updated; the API does not provide concurrent worker access.
 
-## Colunas e capacidade
+## Columns and capacity
 
-As janelas calculam colunas pela largura útil, com mínimo de duas e tamanho de slot preservado. A atualização é agrupada por frame. Alterar colunas não altera capacidade, ordem ou identidade: o slot 8 passa de (8, 0) para (0, 4) com duas colunas. Uma capacidade de 27 não cria slots extras na última linha. A hotbar mantém nove colunas.
+Windows calculate columns from usable width, with a minimum of two and a preserved slot size. Updates are grouped per frame. Changing columns does not change capacity, order, or identity: slot 8 moves from (8, 0) to (0, 4) with two columns. A capacity of 27 does not create extra slots in the last row. The hotbar retains nine columns.
 
-## Persistência e remoção do crafting
+## Persistence and crafting removal
 
-VoxelAPI emite `world_opened(id)` e `world_saving(id)`. InventorySession conecta esses sinais e carrega/salva mesmo sem jogador ou UI. A prévia do menu não abre nem salva inventários persistentes.
+VoxelAPI emits `world_opened(id)` and `world_saving(id)`. InventorySession connects these signals and loads/saves even without a player or UI. The menu preview does not open or save persistent inventories.
 
-A seção `inventories` do mundo guarda versão 3, IDs por papel, seleção e registros por UUID com capacidade e slots. Os IDs são mantidos nas cargas seguintes. O catálogo criativo é reconstruído sem persistir como inventário consumível. Registros permanecem em memória durante a sessão.
+The world's `inventories` section stores version 3, role IDs, selection, and UUID records with capacity and slots. IDs are retained on subsequent loads. The creative catalog is rebuilt without being persisted as a consumable inventory. Records remain in memory during the session.
 
-A interface e as regras de crafting foram removidas. Saves antigos com ingredientes nos slots de craft são migrados para um registro lógico de recuperação. Os itens voltam ao storage/hotbar assim que existe espaço; enquanto tudo está cheio, permanecem salvos nesse registro. Um UUID antigo de craft é preservado como UUID de recuperação. Mundos novos não criam inventário de craft.
+The crafting interface and rules have been removed. Older saves with ingredients in craft slots are migrated to a logical recovery record. Items return to storage/hotbar as soon as space becomes available; while everything is full, they remain saved in that record. An old craft UUID is preserved as the recovery UUID. New worlds do not create a craft inventory.
 
-## Verificação
+## Verification
 
-- `inventory_service_test.gd`: núcleo sem UI, limites configuráveis, snapshots, transferências parciais, troca, revisão obsoleta, falhas sem mutação e dados completos na primeira notificação.
-- `inventory_controller_test.gd`: rejeição de drop e ressincronização de ItemView, destinos ocultos, invalidação por mutação, tokens consumidos, múltiplas views e ciclo de vida independente.
-- `inventory_ui_test.gd` e `inventory_mouse_test.gd`: encaminhamento de eventos reais da GUI, F1, mouse, ícones, contadores, scroll e janelas.
-- `inventory_reflow_test.gd`: mudança de colunas durante arraste, capacidade fixa, ordem e permanência do modelo após destruir a UI.
-- `inventory_session_test.gd`: migração de crafting com inventário cheio, recuperação posterior, UUIDs fixos e isolamento entre mundos.
-- `inventory_disk_test.gd`: escrita e leitura em processos separados, com inventário adicional sem UI.
+- `inventory_service_test.gd`: core without UI, configurable limits, snapshots, partial transfers, swaps, stale revisions, failures without mutation, and complete data in the first notification.
+- `inventory_controller_test.gd`: rejected drops and ItemView resynchronization, hidden destinations, mutation invalidation, consumed tokens, multiple views, and independent lifetimes.
+- `inventory_ui_test.gd` and `inventory_mouse_test.gd`: real GUI event forwarding, F1, mouse, icons, counters, scrolling, and windows.
+- `inventory_reflow_test.gd`: column changes during dragging, fixed capacity, order, and model retention after UI destruction.
+- `inventory_session_test.gd`: crafting migration with a full inventory, later recovery, fixed UUIDs, and world isolation.
+- `inventory_disk_test.gd`: writing and reading in separate processes, with an additional inventory without UI.

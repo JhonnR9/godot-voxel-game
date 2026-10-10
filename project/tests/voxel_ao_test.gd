@@ -1,5 +1,6 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
+# TEST_REQUIRES_RENDERER
 # Run with an active renderer (without --headless).
 # Exercise the generated chunk mesh, including all face orientations and a
 # three-axis chunk boundary. No renderer-dependent screen-space AO is needed.
@@ -34,7 +35,7 @@ func run() -> void:
 		push_error("Voxel AO mesh inspection requires an active renderer; omit --headless.")
 		quit(1)
 		return
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	data.world.base_height = 32
 	data.world.amplitude = 0
 	data.world.sea_level = 0

@@ -1,4 +1,4 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 var manager: Node:
 	get: return root.get_node("InventoryManager")
@@ -19,7 +19,7 @@ func run() -> void:
 	await settle()
 	var item = ui._make_block_item(ui._block_by_id(1))
 	item.set_item_amount(17)
-	InventoryService.set_stack(ui.inventory_grid.get_inventory_id(), 8, 1, 17)
+	InventoryService.set_stack(ui.inventory_grid.get_inventory_id(), 8, block_id("grass"), 17)
 	var before: Dictionary = ui.serialize_inventory()
 	var creative: Array = InventoryService.snapshot(ui.creative_grid.get_inventory_id())
 	ui.inventory_panel.size = Vector2(170, 320)

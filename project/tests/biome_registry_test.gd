@@ -1,52 +1,27 @@
-extends SceneTree
-
-var failures := 0
-
-func check(condition: bool, message: String) -> void:
-	if not condition:
-		failures += 1
-		push_error(message)
-
-func _initialize() -> void:
-	call_deferred("run")
-
-func wait_for_world(world: Node) -> bool:
-	var deadline := Time.get_ticks_msec() + 20000
-	while world.is_initial_loading() and Time.get_ticks_msec() < deadline:
-		await process_frame
-	check(not world.is_initial_loading(), "Terrain chunks did not load in time.")
-	return not world.is_initial_loading()
-
-func make_world(config_path: String, focus: Vector3, name: String) -> Node:
-	var world: Node = ClassDB.instantiate("VoxelAPI")
-	world.set_biome_registry_path(config_path)
-	root.add_child(world)
-	world.set_render_settings({"render_distance": 4, "vertical_render_distance": 2})
-	world.set_focus_position(focus)
-	world.start_world(int(SaveService.create_world(42, name)))
-	return world
-
-func write_config(path: String, data: Dictionary) -> void:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	check(file != null, "Could not write test config.")
-	if file:
-		file.store_string(JSON.stringify(data))
-		file.close()
+extends "res://tests/support/test_case.gd"
 
 func run() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	check(VoxelAPI.validate_biome_registry(data).valid, "Default registry rejected.")
+	var land_index := -1
+	var tree_index := -1
+	var vegetation_index := -1
+	for index in range(data.biomes.size()):
+		var entry: Dictionary = data.biomes[index]
+		if entry.selection.kind == "land" and land_index < 0: land_index = index
+		if int(entry.get("trees", {}).get("max_per_chunk", 0)) > 0: tree_index = index
+		if int(entry.get("vegetation", {}).get("coverage_max", 0)) > 0: vegetation_index = index
 	for change in ["duplicate", "gap", "block", "strata", "version", "noise", "trees", "plants", "rarity", "fractional_rarity", "fallback"]:
 		var invalid := data.duplicate(true)
 		match change:
 			"duplicate": invalid.biomes[1].id = invalid.biomes[0].id
-			"gap": invalid.biomes[0].selection.climate_max = 0.5
+			"gap": invalid.biomes[land_index].selection.climate_max = (float(data.biomes[land_index].selection.get("climate_min", 0)) + float(data.biomes[land_index].selection.get("climate_max", 1))) / 2.0
 			"block": invalid.biomes[0].materials.surface = "missing_block"
 			"strata": invalid.biomes[0].strata = [{"block": "stone", "min_depth": 8, "max_depth": 2}]
-			"version": invalid.version = 99
+			"version": invalid.version = int(data.version) + 1
 			"noise": invalid.world.noises.terrain.frequency = 0
-			"trees": invalid.biomes[0].trees.min_height = 25
-			"plants": invalid.biomes[0].vegetation.plants = []
+			"trees": invalid.biomes[tree_index].trees.min_height = int(invalid.biomes[tree_index].trees.get("max_height", 0)) + 1
+			"plants": invalid.biomes[vegetation_index].vegetation.plants = []
 			"rarity": invalid.biomes[0].rarity = -1
 			"fractional_rarity": invalid.biomes[0].rarity = 1.5
 			"fallback":
@@ -104,8 +79,36 @@ func run() -> void:
 		for x in range(-4096, 4097, 128):
 			var c: Dictionary = defaults.sample_terrain_column(Vector2i(x, z))
 			found[c.biome_name] = true
-	for name in ["mountains", "plains", "desert", "ocean", "river", "beach", "snow", "frozen_ocean", "frozen_river", "snowy_shore"]:
-		check(found.has(name), "Default biome never selected: " + name)
+	for entry: Dictionary in data.biomes:
+		var name: String = entry.name
+		if int(entry.get("rarity", 1)) == 0:
+			check(not found.has(name), "Disabled biome selected: " + name)
+		# Rare or narrow profiles may legitimately be absent from a finite scan.
+		# Exercise every registered profile separately below instead of requiring golden counts.
+	print("Configured biome coverage: ", found.keys())
+	for entry: Dictionary in data.biomes:
+		var isolated := data.duplicate(true)
+		var profile := entry.duplicate(true)
+		profile.selection = {"kind": "land"}
+		profile.rarity = 1
+		profile.relief = {"anchor": 0, "ridge_amplitude": 0, "bias": 0}
+		profile.trees = {}
+		profile.vegetation = {}
+		isolated.biomes = [profile]
+		isolated.world.amplitude = 0
+		isolated.world.coast_start = -1
+		isolated.world.dry_coast_start = -1
+		isolated.world.coast_span = 0.001
+		isolated.world.dry_coast_span = 0.001
+		isolated.world.sea_level = min(0, int(isolated.world.base_height) - 1)
+		write_config("user://isolated_profile.json", isolated)
+		var profile_world := make_world("user://isolated_profile.json", Vector3(0, int(isolated.world.base_height) + 6, 0), "Registry profile " + str(entry.name))
+		if await wait_for_world(profile_world):
+			for point in [Vector2i.ZERO, Vector2i(-17, 16), Vector2i(17, -16)]:
+				var column: Dictionary = profile_world.sample_terrain_column(point)
+				check(int(column.biome_id) == int(entry.id) and column.biome_name == entry.name, "Configured profile identity was not preserved.")
+				check(profile_world.get_block_type_at(Vector3(point.x, column.height, point.y)) == column.surface_block, "Configured profile surface disagrees with generation.")
+		profile_world.free()
 
 	# Different initial focus changes chunk scheduling/cache population order.
 	# Border trees must still produce exactly the same blocks in both worlds.
@@ -157,11 +160,3 @@ func run() -> void:
 		await process_frame
 	print("Biome registry checks finished: ", failures, " failures.")
 	quit(1 if failures else 0)
-
-func block_id(name: String) -> int:
-	var registry: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/block_registry.json"))
-	for b in registry.blocks:
-		if b.name == name:
-			return int(b.id)
-	push_error("Unknown fixture block: " + name)
-	return -1

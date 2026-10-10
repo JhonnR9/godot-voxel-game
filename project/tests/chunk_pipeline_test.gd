@@ -1,4 +1,4 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 func wait_idle(world: Node) -> bool:
 	var deadline := Time.get_ticks_msec() + 30000
@@ -16,7 +16,7 @@ func torch_lights(world: Node) -> Array[Node]:
 	return world.find_children("*", "OmniLight3D", true, false)
 
 func run() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	data.world.base_height = 32
 	data.world.amplitude = 0
 	data.world.sea_level = 0

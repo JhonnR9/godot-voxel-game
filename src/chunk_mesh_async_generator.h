@@ -4,7 +4,9 @@
 #include "chunk_task_scheduler.h"
 #include <godot_cpp/classes/ref_counted.hpp>
 namespace godot {
+
 struct MeshResult {
+
 	ChunkMeshData geometry;
 	PackedVector3Array collision_faces;
 	PackedVector3Array torch_positions;
@@ -13,6 +15,7 @@ struct MeshResult {
 	uint64_t version	= 0;
 	uint64_t request_id = 0;
 	uint64_t wait_us = 0, work_us = 0;
+
 };
 struct ChunkMeshJob {
 	Vector3i pos;
@@ -23,6 +26,7 @@ struct ChunkMeshJob {
 	uint64_t queued_us	= 0;
 	std::shared_ptr<const ChunkMeshMetadata> metadata;
 };
+
 class ChunkMeshAsyncGenerator : public RefCounted {
 	GDCLASS(ChunkMeshAsyncGenerator, RefCounted)
 	static std::vector<MeshResult> run_batch(const std::vector<ChunkMeshJob> &jobs);

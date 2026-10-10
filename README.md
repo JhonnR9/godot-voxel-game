@@ -265,15 +265,21 @@ References: [Block Registry](project/addons/block_registry/README.md), [Biome re
 
 ## Tests and benchmarks
 
-[project/tests/](project/tests/) contains Godot integration tests for generation, biomes, streaming, lighting, object selection, settings, inventory, persistence, and menu preview. [tests/](tests/) contains standalone C++ checks for tunnels, vegetation, deposits, transitions, and rarity, plus a queue benchmark.
-
-Example integration test on Linux, using temporary directories to separate test saves and settings from player data:
+The single entry point discovers and runs Python checks, standalone C++ tests, and Godot integration tests with live terminal logs, isolated saves/settings, timeouts, and a JSON report:
 
 ```sh
-env XDG_DATA_HOME=/tmp/voxelgames-test-data \
-    XDG_CONFIG_HOME=/tmp/voxelgames-test-config \
-    godot --headless --path project --script res://tests/inventory_controller_test.gd
+python3 tests/run_tests.py
 ```
+
+Build the extension first with `scons -j6 target=template_debug`. The runner imports the project and compiles the standalone native tests automatically. It discovers new `*_test.py`, `*_test.cpp`, and `*_test.gd` files without maintaining a manual list.
+
+```sh
+python3 tests/run_tests.py --list
+python3 tests/run_tests.py --filter rarity
+python3 tests/run_tests.py --include-benchmarks --require-all
+```
+
+AO mesh inspection requires an active renderer; without a display, that test is explicitly skipped. `--require-all` treats skips as failures. Biome/block tests resolve identities and tuning from the registries rather than fixed IDs, array positions, or exact population counts. Controlled fixtures still define boundary and invalid-input scenarios. See [Testing guide](docs/testing.md) for options, prerequisites, output, and how to add tests.
 
 Other useful entry points:
 

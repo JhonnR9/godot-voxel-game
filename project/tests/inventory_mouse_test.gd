@@ -1,4 +1,4 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 var manager: Node:
 	get: return root.get_node("InventoryManager")

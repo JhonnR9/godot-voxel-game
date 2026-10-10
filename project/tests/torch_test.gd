@@ -1,4 +1,4 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 func lights(world: Node) -> Array[Node]:
 	return world.find_children("*", "OmniLight3D", true, false)
@@ -12,7 +12,7 @@ func wait_lights(world: Node, expected: int) -> void:
 	check(false, "Expected %d torch lights, got %d" % [expected, lights(world).size()])
 
 func run() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	data.world.base_height = 32
 	data.world.amplitude = 0
 	data.world.sea_level = 0
@@ -33,7 +33,7 @@ func run() -> void:
 		quit(1)
 		return
 	var torch := block_id("torch")
-	check(torch == 32, "Torch has a stable new block ID")
+	check(torch > 0, "Torch is registered")
 	check(root.get_node("BlockIconCache").get_icon(torch) != null, "Torch inventory icon exists")
 	var point := Vector3(8, 33, 8)
 	world.set_block(point, torch)
@@ -52,7 +52,9 @@ func run() -> void:
 	root.add_child(ui)
 	check(ui.collect_block(block_id("fern")), "Plant can be collected into inventory")
 	ui.free()
-	for name in ["flower", "tall_grass", "short_grass", "fern", "daisy", "cornflower", "poppy"]:
+	for entry: Dictionary in blocks_with_flag("crossed"):
+		if entry.name == "torch": continue
+		var name: String = entry.name
 		var plant_point := Vector3(12, 48, 8)
 		world.set_block(plant_point, block_id(name))
 		var deadline := Time.get_ticks_msec() + 10000

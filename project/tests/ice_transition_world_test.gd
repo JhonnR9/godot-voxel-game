@@ -1,7 +1,7 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 func run() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/biome_registry.json"))
+	var data: Dictionary = biome_registry()
 	# Force a full ocean while retaining the real seeded climate field.
 	data.world.coast_start = 1
 	data.world.coast_span = 0.001
@@ -13,15 +13,16 @@ func run() -> void:
 	write_config("user://ice_transition.json", data)
 	var climate := FastNoiseLite.new()
 	climate.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	climate.seed = 44
+	climate.seed = test_seed() + 2
 	climate.frequency = data.world.noises.climate.frequency
 	climate.fractal_octaves = data.world.noises.climate.octaves
+	var freezing_boundary := float(biome("frozen_ocean").selection.climate_max)
 	var focus := Vector2i.ZERO
 	var found := false
 	for z in range(-4096, 4097, 32):
 		for x in range(-4096, 4097, 32):
 			var weight := smoothstep(0.0, 1.0, (climate.get_noise_2d(x, z) - data.world.climate_start) / data.world.climate_span)
-			if absf(weight - 0.18) < 0.002:
+			if absf(weight - freezing_boundary) < 0.002:
 				focus = Vector2i(x, z)
 				found = true
 				break

@@ -1,9 +1,6 @@
-extends SceneTree
+extends "res://tests/support/test_case.gd"
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-func _run() -> void:
+func run() -> void:
 	var menu: Control = load("res://scenes/main_menu.tscn").instantiate()
 	root.add_child(menu)
 	current_scene = menu

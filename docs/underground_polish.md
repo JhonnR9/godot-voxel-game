@@ -1,60 +1,30 @@
-# Pedra, emissão e cavernas
+# Stone, emission, and caves
 
-## Texturas
+## Textures
 
-A pedra agora usa `res://textures/blocks/stone.png` nas três faces, com grão
-neutro compatível com a rocha das texturas dos minérios. Pedra profunda e
-bedrock reutilizam essa imagem com seus tints existentes. Carvão usa a nova
-`res://textures/blocks/coal_ore.png`, com pequenas inclusões de grafite escuro.
-Os PNGs são RGBA 32 × 32. O bloco de carvão usa ID 22; IDs anteriores ficam
-preservados. Registro, atlas, header C++ e cache de ícones são atualizados.
+Stone now uses `res://textures/blocks/stone.png` on all three faces, with a neutral grain matching the rock in ore textures. Deepslate and bedrock reuse this image with their existing tints. Coal uses the new `res://textures/blocks/coal_ore.png`, with small dark graphite inclusions. PNGs are 32 × 32 RGBA. The coal block uses ID 22; earlier IDs are preserved. The registry, atlas, C++ header, and icon cache are updated.
 
-As duas imagens foram geradas pela ferramenta integrada `image_gen`, usando
-ferro e diamante como referências de estilo, e reduzidas com nearest-neighbor.
-Prompts completos e caminhos finais estão em
-`project/art/underground_texture_prompts.json`.
+Both images were generated with the integrated `image_gen` tool, using iron and diamond as style references, and downscaled with nearest-neighbor filtering. Full prompts and final paths are in `project/art/underground_texture_prompts.json`.
 
-## Emissão
+## Emission
 
-`chunk.gdshader` identifica apenas as camadas de ferro e diamante. Duas
-máscaras analíticas em RGB linear selecionam, respectivamente, pixels quentes
-cobre/tan e pixels frios ciano. A rocha cinza ao redor não emite. A técnica não
-precisa de texturas de máscara, amostras extras do atlas ou luzes por bloco.
-As intensidades iniciais são 0,65 para ferro e 1,25 para diamante, editáveis
-nos uniforms `iron_emission` e `diamond_emission` do shader.
+`chunk.gdshader` identifies only the iron and diamond layers. Two analytical masks in linear RGB select warm copper/tan pixels and cool cyan pixels, respectively. The surrounding gray rock does not emit. This technique requires no mask textures, extra atlas samples, or per-block lights. Initial intensities are 0.65 for iron and 1.25 for diamond, editable through the shader's `iron_emission` and `diamond_emission` uniforms.
 
-O cenário habilita um glow discreto (intensidade 0,18, limiar HDR 1,1) para os
-pontos mais claros. A emissão deixa o minério visível no escuro; ela não é uma
-luz pontual que ilumina as paredes vizinhas. O halo depende do suporte a glow
-do renderizador. A iluminação e o ciclo noturno continuam ativos.
+The scene enables subtle glow (intensity 0.18, HDR threshold 1.1) for the brightest points. Emission makes ore visible in the dark; it is not a point light illuminating neighboring walls. The halo depends on the renderer's glow support. Lighting and the night cycle remain active.
 
-Os índices de camadas vêm da função C++ gerada `texture_layer_from_name()`;
-adicionar/reordenar texturas não troca o minério que emite. `ChunkNode` também
-preserva seus materiais ao receber colisões e ao ser reutilizado pelo pool.
+Layer indices come from the generated C++ function `texture_layer_from_name()`; adding/reordering textures does not change which ore emits. `ChunkNode` also preserves its materials when receiving collisions and when reused by the pool.
 
-Referência de emissão: https://docs.godotengine.org/en/stable/tutorials/shaders/shader_reference/spatial_shader.html
+Emission reference: [Godot spatial shader reference](https://docs.godotengine.org/en/stable/tutorials/shaders/shader_reference/spatial_shader.html).
 
-## Geração
+## Generation
 
-Os túneis ficaram aproximadamente 7–10 blocos largos e 6–8 altos, mantendo
-curvas, ramificações, teto e bedrock. Os depósitos subterrâneos são bolsões
-compactos, determinísticos pela seed e pelas coordenadas mundiais. Ferro fica
-mais comum e o carvão aparece em profundidades amplas. Diamante continua raro
-e profundo. Terra forma pequenos trechos nas paredes, chão e teto onde um
-bolsão encontra o túnel. A camada geológica troca somente rocha sólida, sem
-fechar passagens ou preencher ar.
+Tunnels are now approximately 7–10 blocks wide and 6–8 high, retaining curves, branches, ceilings, and bedrock. Underground deposits are compact pockets, deterministic from the seed and world coordinates. Iron is more common and coal appears across a broad depth range. Diamond remains rare and deep. Dirt forms small patches in walls, floors, and ceilings where a pocket intersects a tunnel. The geological layer replaces only solid rock, without closing passages or filling air.
 
-Terreno é regenerado ao carregar e recebe as edições salvas depois. Um mundo
-novo é a melhor forma de ver a distribuição sem interferência de minerações
-anteriores. Minérios e pedra podem ser inspecionados imediatamente no inventário.
+Terrain is regenerated on load and receives saved edits afterward. A new world is the best way to see the distribution without interference from earlier mining. Ores and stone can be inspected immediately in the inventory.
 
-## Verificação
+## Verification
 
-Compilação SCons, importação do Godot e os testes abaixo passaram. O teste de
-integração carrega um mundo real em modo headless e confirma túneis, ferro,
-carvão e terra em uma região subterrânea de 262.144 blocos. Testes das máscaras
-confirmam que só as inclusões coloridas recebem emissão. Verificação headless
-não avalia o halo final de glow em um monitor com renderização gráfica.
+SCons compilation, Godot import, and the tests below passed. The integration test loads a real world in headless mode and confirms tunnels, iron, coal, and dirt in an underground region of 262,144 blocks. Mask tests confirm that only colored inclusions receive emission. Headless verification does not assess the final glow halo on a monitor with graphical rendering.
 
 ```sh
 c++ -std=c++17 -O2 -Wall -Wextra -pedantic tests/underground_deposits_test.cpp -o /tmp/underground_deposits_test
@@ -65,5 +35,4 @@ XDG_DATA_HOME=/tmp/godot-underground-emission-tests godot --headless --path proj
 XDG_DATA_HOME=/tmp/godot-underground-world-tests godot --headless --path project --log-file /tmp/godot-underground-world.log --script res://tests/underground_world_test.gd
 ```
 
-O teste de mundo cria um save de teste. Use sempre uma pasta isolada para
-`XDG_DATA_HOME`, como nos comandos acima, para manter os saves do jogador separados.
+The world test creates a test save. Always use an isolated `XDG_DATA_HOME` directory, as in the commands above, to keep player saves separate.

@@ -1,7 +1,4 @@
-extends SceneTree
-
-func _initialize() -> void:
-	call_deferred("run")
+extends "res://tests/support/test_case.gd"
 
 func run() -> void:
 	var rows: Array[Dictionary] = []

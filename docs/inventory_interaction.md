@@ -1,13 +1,13 @@
-# Inventário e controle do mouse
+# Inventory and mouse control
 
-F1 (`unlock_mouse`) alterna entre controle do personagem e mouse livre. Com o mouse livre, movimento, câmera e interação com blocos ficam suspensos; F1 novamente devolve o controle sem fechar as janelas. O atalho de salvar o mundo passa a F5 para evitar conflito.
+F1 (`unlock_mouse`) switches between character control and a free mouse. With the mouse unlocked, movement, camera control, and block interaction are suspended; pressing F1 again returns control without closing windows. The world-save shortcut moves to F5 to avoid a conflict.
 
-O baú fechado no canto superior esquerdo abre ou fecha o inventário do jogador. O botão criativo ao lado controla uma janela separada. As duas podem permanecer abertas simultaneamente. A hotbar mantém seu funcionamento e aparência.
+The closed chest in the upper-left corner opens or closes the player inventory. The creative button beside it controls a separate window. Both can remain open simultaneously. The hotbar retains its behavior and appearance.
 
-Arraste uma janela pela barra de título; arraste o canto inferior direito para redimensionar. Posição e tamanho são salvos nas configurações locais `inventory_windows`. Os painéis são limitados à área da tela, mantêm rolagem para itens que não cabem e preservam os itens ao redimensionar a viewport.
+Drag a window by its title bar; drag its lower-right corner to resize it. Position and size are saved in the local `inventory_windows` settings. Panels stay within the screen, retain scrolling for items that do not fit, and preserve items when the viewport is resized.
 
-`InventoryManager` em GDScript mantém o estado de controle do mouse separado da visibilidade das janelas. `is_inventory_open()` consulta a visibilidade; `is_mouse_unlocked()` decide se o jogador pode receber comandos. A UI ignora eventos de mouse enquanto ele está capturado, incluindo controles internos de rolagem; cancelar a interação interrompe arrastes sem consumir itens.
+The GDScript `InventoryManager` keeps mouse-control state separate from window visibility. `is_inventory_open()` checks visibility; `is_mouse_unlocked()` determines whether the player can receive commands. The UI ignores mouse events while the mouse is captured, including internal scrolling controls; canceling interaction stops drags without consuming items.
 
-`floating_inventory_panel.gd` concentra arraste, redimensionamento e limites de tela. `inventory_ui.gd` mantém conteúdo, janelas independentes e persistência do layout. O F1 é processado em `_input` do jogador, antes da GUI, e não repete ao manter a tecla pressionada.
+`floating_inventory_panel.gd` handles dragging, resizing, and screen bounds. `inventory_ui.gd` handles content, independent windows, and layout persistence. F1 is processed in the player's `_input`, before the GUI, and does not repeat while held.
 
-Validação: `inventory_mouse_test.gd` verifica F1, clique nos lançadores, mover e redimensionar, persistência, passagem de eventos e controle do personagem com as janelas abertas. `inventory_ui_test.gd` cobre drag-and-drop, empilhamento, inventário cheio, salvamento e redimensionamento da viewport.
+Validation: `inventory_mouse_test.gd` checks F1, launcher clicks, moving and resizing, persistence, event propagation, and character control with windows open. `inventory_ui_test.gd` covers drag-and-drop, stacking, a full inventory, saving, and viewport resizing.

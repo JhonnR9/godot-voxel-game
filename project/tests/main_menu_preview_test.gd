@@ -1,4 +1,4 @@
-extends "res://tests/biome_registry_test.gd"
+extends "res://tests/support/test_case.gd"
 
 func run() -> void:
 	var before := SaveService.get_saved_worlds()

@@ -1,20 +1,10 @@
-extends SceneTree
+extends "res://tests/support/test_case.gd"
 
 class TestPlayer extends Node:
 	var inventory_open := false
 
 var manager: Node:
 	get: return root.get_node("InventoryManager")
-
-var failures := 0
-
-func check(condition: bool, message: String) -> void:
-	if not condition:
-		failures += 1
-		push_error(message)
-
-func _initialize() -> void:
-	call_deferred("run")
 
 func move_mouse(position: Vector2) -> void:
 	var event := InputEventMouseMotion.new()

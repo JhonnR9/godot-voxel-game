@@ -1,11 +1,8 @@
-extends SceneTree
+extends "res://tests/support/test_case.gd"
 
 const GraphicsOptions = preload("res://scripts/graphics_settings.gd")
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-func _run() -> void:
+func run() -> void:
 	var graphics = root.get_node("DisplaySettings").graphics
 	var scene := Node3D.new()
 	var environment_node := WorldEnvironment.new()
@@ -16,7 +13,7 @@ func _run() -> void:
 	scene.add_child(environment_node)
 	var sun := DirectionalLight3D.new()
 	sun.name = "DirectionalLight3D"
-	sun.set_script(load("res://scenes/directional_light_3d.gd"))
+	sun.set_script(load("res://scripts/directional_light_3d.gd"))
 	scene.add_child(sun)
 	var world: Node3D = ClassDB.instantiate("VoxelAPI")
 	scene.add_child(world)

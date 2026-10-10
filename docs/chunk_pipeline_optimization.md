@@ -1,62 +1,29 @@
-# Otimização do pipeline de chunks
+# Chunk pipeline optimization
 
-Implementação de 02/10/2026, após a investigação em
-[chunk_performance_review.md](chunk_performance_review.md).
+Implementation dated October 2, 2026, following the investigation in [chunk_performance_review.md](chunk_performance_review.md).
 
-## Mudanças aplicadas
+## Applied changes
 
-- Resultados em `std::deque`, sem reconstrução da fila inteira. Recursos do
-  resultado anterior são liberados fora do mutex de publicação.
-- Scheduler compartilhado pelo gerador de modelos e pelo mesher: uma execução
-  por posição, substituição do pedido pendente e revisão monotônica. Atualizações
-  de vizinhos/AO também geram novas revisões. Resultados antigos não são instalados.
-- Limite padrão de oito chunks em execução ou aguardando consumo **por etapa**.
-  A fila de pedidos é deduplicada por posição; pedidos distantes são cancelados
-  quando o foco muda. Jobs de modelo já iniciados podem terminar e ser aproveitados
-  se o jogador voltar; jobs de mesh invalidam sua revisão quando saem da área.
-- Tarefas finitas com lotes configuráveis de 1 a 8. O pool do Godot continua
-  compartilhado com outras tarefas; nenhum worker fica bloqueado esperando pedidos.
-- Workers geram apenas geometria. Criação e upload de ArrayMesh, instalação de
-  colisões e configuração dos nós ocorrem na thread principal. Isso eliminou
-  erros de RID encontrados ao criar meshes nos workers durante testes headless
-  com vários mundos ativos.
-- Finalização com orçamento padrão de 2 ms e teto de 32 resultados por frame.
-  Uma instalação individual pode ultrapassar o orçamento: o tempo é verificado
-  entre resultados. O pico é exposto nas estatísticas.
-- Metadados dos blocos carregados uma vez por instância do mundo, em tabelas
-  imutáveis indexadas por ID/face. Workers não abrem JSON nem carregam texturas.
-- Removidos placeholders que alocavam 256 KiB por posição apenas para informar
-  que a geração estava pendente.
-- Cache limitado a 256 colunas de chunks XZ, por configuração/mundo. Os mesmos
-  dados de terreno são reaproveitados entre diferentes alturas Y. Amostragem
-  de ruído ocorre fora do mutex do cache.
-- Busca dos 27 vizinhos em uma chamada ao repositório. Edições copiam um chunk
-  apenas quando existem referências externas ao repositório; snapshots retidos
-  por jobs preservam os blocos anteriores. Sem leitores externos, edição é local.
-- Contagem de blocos não vazios permite pular o mesher de chunks de ar.
-  Varredura de plantas usa X como eixo interno, acompanhando o layout dos voxels.
-  Máscaras de faces são reutilizadas dentro de cada tarefa/lote.
-- Streaming solicita um halo de dados, incluindo diagonais, além da área visível.
-  A mesh espera esse halo para evitar AO temporário nas bordas. As tentativas
-  ocorrem por mudança de foco, chegada de modelo ou edição, em vez de varrer o
-  mundo ativo em todos os frames.
-- Rebuilds atualizam o ChunkNode existente; tochas cujas posições não mudaram
-  preservam suas luzes. A finalização usa a classificação de superfícies recebida
-  com a geometria, sem recuperar arrays de uma mesh para identificar água.
-- TaskIDs são recolhidos e aguardados na troca/fechamento de mundo; filas, edições
-  e dados antigos são limpos antes de alterar seed/ruídos/repositório. O pool de
-  nós respeita o teto de prewarm e pode crescer conforme a demanda real.
+- Results use `std::deque` without rebuilding the entire queue. Resources from the previous result are released outside the publication mutex.
+- A shared scheduler implementation serves the model generator and mesher: one running job per position, pending-request replacement, and monotonic revisions. Neighbor/AO updates also create new revisions. Old results are not installed.
+- The default limit is eight chunks running or waiting for consumption **per stage**. Requests are deduplicated by position; distant requests are canceled when focus changes. Already-started model jobs can finish and be reused if the player returns; mesh jobs invalidate their revision when they leave the area.
+- Finite tasks with configurable batches from 1 to 8. Godot's pool remains shared with other tasks; no worker blocks waiting for requests.
+- Workers generate geometry only. ArrayMesh creation/upload, collision installation, and node configuration occur on the main thread. This eliminated RID errors encountered when creating meshes in workers during headless tests with multiple active worlds.
+- Finalization has a default budget of 2 ms and a cap of 32 results per frame. A single installation can exceed the budget: time is checked between results. The peak is exposed in statistics.
+- Block metadata is loaded once per world instance into immutable tables indexed by ID/face. Workers do not open JSON or load textures.
+- Removed placeholders that allocated 256 KiB per position solely to indicate pending generation.
+- Cache limited to 256 XZ chunk columns per configuration/world. The same terrain data is reused across different Y heights. Noise sampling occurs outside the cache mutex.
+- All 27 neighbors are queried in one repository call. Edits copy a chunk only when references external to the repository exist; job-retained snapshots preserve previous blocks. Without external readers, edits occur in place.
+- A non-empty block count allows the mesher to skip air chunks. Plant scans use X as the inner axis, matching voxel layout. Face masks are reused within each task/batch.
+- Streaming requests a data halo, including diagonals, beyond the visible area. The mesh waits for this halo to avoid temporary AO at boundaries. Attempts occur on focus changes, model arrivals, or edits instead of scanning the active world every frame.
+- Rebuilds update the existing ChunkNode; torches whose positions remain unchanged preserve their lights. Finalization uses surface classifications received with geometry instead of retrieving mesh arrays to identify water.
+- TaskIDs are collected and awaited when switching/closing worlds; old queues, edits, and data are cleared before changing the seed/noise/repository. The node pool respects its prewarm cap and can grow with actual demand.
 
-O halo tem um custo de memória: no cenário de raio 4 e altura 2, são 623 modelos
-para 245 posições visíveis. Só os blocos desses modelos ocupam aproximadamente
-155,75 MiB, fora meshes e caches. A remoção dos placeholders evita uma alocação
-redundante, mas não garante menor memória total que o motor anterior, que deixava
-bordas sem os vizinhos necessários. Compactar dados uniformes ou armazenar apenas
-as faixas necessárias do halo é uma otimização futura.
+The halo has a memory cost: at radius 4 and height 2, there are 623 models for 245 visible positions. Blocks alone occupy approximately 155.75 MiB, excluding meshes and caches. Removing placeholders avoids redundant allocation but does not guarantee less total memory than the previous engine, which left boundaries without required neighbors. Compacting uniform data or storing only required halo strips is a future optimization.
 
-## Configuração e medições
+## Configuration and measurements
 
-Depois de adicionar VoxelAPI à árvore:
+After adding VoxelAPI to the tree:
 
 ```gdscript
 world.set_pipeline_settings({
@@ -67,66 +34,33 @@ world.set_pipeline_settings({
 var stats: Dictionary = world.get_pipeline_stats()
 ```
 
-`batch_size` é limitado a 1–8, `max_inflight` a 1–16 por etapa e o orçamento a
-0,1–8 ms. Reduzir o limite não interrompe jobs já iniciados; eles terminam antes
-que novas submissões utilizem a capacidade reduzida.
+`batch_size` is clamped to 1–8, `max_inflight` to 1–16 per stage, and the budget to 0.1–8 ms. Lowering the limit does not interrupt already-started jobs; they finish before new submissions use the reduced capacity.
 
-As estatísticas incluem pedidos pendentes, chunks em execução/aguardando consumo,
-resultados prontos, pico de fila, tarefas submetidas, resultados obsoletos,
-tempo médio/máximo de trabalho, espera média desde o pedido, tempos cumulativos
-segurando/esperando o mutex da fila e duração da finalização. A espera inclui a
-fila local e, em lotes, os chunks anteriores da tarefa. Leituras de estatísticas
-copiam os contadores sob lock e constroem o Dictionary depois de soltá-lo.
+Statistics include pending requests, chunks running/waiting for consumption, ready results, peak queue size, submitted tasks, stale results, average/maximum work time, average wait since request, cumulative queue-mutex holding/waiting times, and finalization duration. Waiting includes the local queue and, in batches, earlier chunks in the task. Statistics reads copy counters under lock and construct the Dictionary after releasing it.
 
-O tempo de trabalho não inclui a instalação visual/física na thread principal.
-As estatísticas reiniciam na troca de mundo. A thread principal continua sendo a
-única dona dos estados de submissão, revisões, estágios e flags dos chunks.
+Work time excludes visual/physics installation on the main thread. Statistics reset when switching worlds. The main thread remains the sole owner of submission state, revisions, stages, and chunk flags.
 
-## Comparação de lotes
+## Batch comparison
 
-O teste reproduzível está em `project/tests/chunk_pipeline_benchmark.gd`; os
-resultados completos ficam em [chunk_batch_benchmark.json](chunk_batch_benchmark.json).
-Mesma seed 12345, foco, cobertura física, raio 4, altura 2, limite 8 por etapa e
-orçamento 2 ms. Três execuções por tamanho de lote, build `template_debug`,
-headless e limite de 120 frames/s. O cronômetro começa em `start_world`, depois
-que o mundo foi adicionado à árvore e o pool foi preparado.
+The reproducible test is in `project/tests/chunk_pipeline_benchmark.gd`; complete results are in [chunk_batch_benchmark.json](chunk_batch_benchmark.json). All runs use seed 12345, the same focus and physical coverage, radius 4, height 2, a limit of 8 per stage, and a 2 ms budget. Three runs per batch size, `template_debug` build, headless, capped at 120 frames/s. Timing starts at `start_world`, after the world has been added to the tree and the pool prepared.
 
-A comparação mede o carregamento inicial da região central e a drenagem de todos
-os pedidos da área e do halo. Não mede FPS/GPU nem compara diretamente com o
-motor anterior. A ordem de chegada dos chunks pode mudar a quantidade de
-trabalhos que precisam de atualização; por isso as estatísticas brutas acompanham
-os tempos. Os limites de frames também afetam a frequência de despacho/consumo.
+The comparison measures initial loading of the central region and draining all requests for the area and halo. It does not measure FPS/GPU or directly compare with the previous engine. Chunk arrival order can change how many jobs need updating, so raw statistics accompany timings. Frame caps also affect dispatch/consumption frequency.
 
-| Lote | Carga central (mediana) | Drenagem total (mediana) | Submissões de modelos | Submissões de meshes (mediana) |
+| Batch | Central load (median) | Total drain (median) | Model submissions | Mesh submissions (median) |
 |---:|---:|---:|---:|---:|
 | 1 | 280.4 ms | 780.5 ms | 623 | 245 |
 | 2 | 242.9 ms | 818.1 ms | 312 | 147 |
 | 4 | 276.2 ms | 884.7 ms | 156 | 93 |
 | 8 | 301.4 ms | 934.9 ms | 78 | 75 |
 
-Uma tarefa por chunk permanece como padrão por oferecer a drenagem total mais
-rápida neste teste. Lote 2 entregou a região central mais cedo, portanto pode ser
-preferível para a carga inicial. O limite é contado em chunks: com limite 8, lote
-8 pode usar apenas uma tarefa por etapa, reduzindo paralelismo. Lotes
-maiores ficam disponíveis para medir em builds release e em outras máquinas;
-reduzir submissões não implica reduzir o tempo até um chunk ficar visível.
+One task per chunk remains the default because it provided the fastest total drain in this test. Batch 2 delivered the central region earlier and may be preferable for initial loading. The limit is counted in chunks: with a limit of 8, batch 8 can use only one task per stage, reducing parallelism. Larger batches remain available for measurement in release builds and on other machines; fewer submissions do not necessarily shorten the time until a chunk becomes visible.
 
-## Validação
+## Validation
 
-- Build da extensão: `scons -j6 target=template_debug`.
-- `chunk_pipeline_test.gd`: limites das filas, amortização de submissões com lote
-  2, halo, mundo parado, última revisão após edições em canto, preservação do
-  nó/luz, retorno rápido do foco, salvamento/reload, troca e destruição com jobs
-  pendentes.
-- `torch_test.gd`: colocação, ícone, luz, seleção, reload e remoção da última tocha.
-- `biome_registry_test.gd`: geração/sampler, árvores em diferentes ordens de
-  carregamento, limites de altura e bedrock. As fixtures foram ajustadas às
-  dimensões 32×64×32 que já existiam no workspace.
-- `voxel_ao_test.gd` com renderer OpenGL Compatibility: seis faces, diagonal entre
-  chunks, transparência e greedy meshing. As coordenadas de borda da fixture
-  também foram ajustadas às dimensões atuais.
+- Extension build: `scons -j6 target=template_debug`.
+- `chunk_pipeline_test.gd`: queue limits, submission amortization with batch 2, halo, idle world, latest revision after corner edits, node/light preservation, rapid focus return, save/reload, switching, and destruction with pending jobs.
+- `torch_test.gd`: placement, icon, light, selection, reload, and removal of the last torch.
+- `biome_registry_test.gd`: generation/sampler, trees in different loading orders, height bounds, and bedrock. Fixtures were adjusted to the 32×64×32 dimensions already present in the workspace.
+- `voxel_ao_test.gd` with the OpenGL Compatibility renderer: six faces, chunk diagonals, transparency, and greedy meshing. Fixture boundary coordinates were also adjusted to current dimensions.
 
-O tamanho 32×64×32 e o formato de saves foram preservados. Alterar dimensões,
-separar seções de mesh/colisão, comparar tarefas de grupo e implementar LOD
-continuam sendo experimentos separados. Não há afirmação de ganho de FPS sem
-comparação em build release com o renderer e a rota do jogo.
+The 32×64×32 size and save format were preserved. Changing dimensions, separating mesh/collision sections, comparing group tasks, and implementing LOD remain separate experiments. No FPS gain is claimed without comparison in a release build using the game's renderer and route.

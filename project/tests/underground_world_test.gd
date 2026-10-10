@@ -1,10 +1,7 @@
 # Integration smoke test. Run with an isolated XDG_DATA_HOME to keep test worlds separate.
-extends SceneTree
+extends "res://tests/support/test_case.gd"
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-func _run() -> void:
+func run() -> void:
 	var world = ClassDB.instantiate("VoxelAPI")
 	root.add_child(world)
 	world.set_render_settings({"render_distance": 4, "vertical_render_distance": 2})
@@ -22,10 +19,10 @@ func _run() -> void:
 				var id := int(world.get_block_type_at(Vector3(x, y, z)))
 				assert(id >= 0, "Expected a loaded underground block.")
 				counts[id] = int(counts.get(id, 0)) + 1
-	assert(int(counts.get(6, 0)) > 100, "Iron veins missing.")
-	assert(int(counts.get(22, 0)) > 100, "Coal veins missing.")
-	assert(int(counts.get(2, 0)) > 100, "Dirt pockets missing.")
-	assert(int(counts.get(0, 0)) > 100, "Open tunnel volume missing.")
+	assert(int(counts.get(block_id("iron_ore"), 0)) > 100, "Iron veins missing.")
+	assert(int(counts.get(block_id("coal_ore"), 0)) > 100, "Coal veins missing.")
+	assert(int(counts.get(block_id("dirt"), 0)) > 100, "Dirt pockets missing.")
+	assert(int(counts.get(block_id("air"), 0)) > 100, "Open tunnel volume missing.")
 	print("Underground world integration passed. Block counts: ", counts)
 	# Allow pending neighbour mesh jobs to drain before process shutdown.
 	for frame in range(60):

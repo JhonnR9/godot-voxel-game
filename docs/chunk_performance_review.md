@@ -1,243 +1,116 @@
-# Investigação de desempenho dos chunks
+# Chunk performance investigation
 
-As melhorias foram implementadas posteriormente; veja [chunk_pipeline_optimization.md](chunk_pipeline_optimization.md). Este documento registra a investigação anterior às mudanças.
+The improvements were implemented later; see [chunk_pipeline_optimization.md](chunk_pipeline_optimization.md). This document records the investigation before those changes.
 
-Data: 02/10/2026. Análise do código atual do workspace, incluindo alterações
-locais que já existiam. Nenhum comportamento do motor foi modificado nesta
-investigação. Foi acrescentado um microbenchmark reproduzível.
+Date: October 2, 2026. Analysis of the workspace code at that time, including existing local changes. No engine behavior was modified during this investigation. A reproducible microbenchmark was added.
 
-## Conclusão
+## Conclusion
 
-A primeira melhoria deve ser no caminho entre produção e consumo: eliminar a
-reconstrução integral da fila de meshes, impedir trabalho duplicado, encurtar as
-seções críticas e limitar a instalação por tempo. Mudar o tamanho dos chunks ou
-agrupar muitas gerações numa tarefa antes disso pode deslocar o gargalo para a
-thread principal e aumentar a latência das edições.
+The first improvement should target the path between production and consumption: eliminate full mesh-queue reconstruction, prevent duplicate work, shorten critical sections, and limit installation by time. Changing chunk size or grouping many generations into one task beforehand could shift the bottleneck to the main thread and increase edit latency.
 
-São custos e riscos confirmados pela leitura do código. O peso relativo de
-geração, meshing, scheduler, renderer e física ainda precisa de instrumentação
-no jogo; não houve medição de FPS, contenção real ou tempo de tarefas nativas.
+These costs and risks are confirmed by code inspection. The relative weight of generation, meshing, scheduling, rendering, and physics still needs in-game instrumentation; FPS, actual contention, and native task times were not measured.
 
-## Achados e propostas
+## Findings and proposals
 
-### 1. Consumir poucas meshes custa proporcionalmente à fila inteira
+### 1. Consuming a few meshes costs proportionally to the entire queue
 
-Em `src/chunk_mesh_async_generator.cpp:65`, consumir K resultados percorre N
-resultados e recria dois HashSets sob `_generated_meshes_mutex`. Os produtores
-precisam desse mesmo mutex para publicar resultados. Uma drenagem completa em
-pequenos lotes soma aproximadamente O(N²/K) trabalho de reconstrução.
+In `src/chunk_mesh_async_generator.cpp:65`, consuming K results traverses N results and recreates two HashSets under `_generated_meshes_mutex`. Producers need that same mutex to publish results. A complete drain in small batches adds up to approximately O(N²/K) reconstruction work.
 
-A atribuição na linha 91 usa `std::move`, mas o HashSet deste checkout só tem
-atribuição por cópia (`godot-cpp/include/godot_cpp/templates/hash_set.hpp:417`).
-Logo, a fila restante é também copiada; seus dados não são simplesmente
-transferidos. As cópias de resultados copiam referências, não toda a geometria,
-mas repetem operações de referência, alocações e cópias das tabelas.
+The assignment at line 91 uses `std::move`, but this checkout's HashSet has only copy assignment (`godot-cpp/include/godot_cpp/templates/hash_set.hpp:417`). The remaining queue is therefore also copied; its data is not simply transferred. Result copies copy references, not all geometry, but repeat reference operations, allocations, and table copies.
 
-**Proposta:** `std::deque<MeshResult>` para resultados prontos; retirar K com
-`pop_front` para um vetor local e finalizar fora do mutex. Custo O(K) por retirada.
-Para consumo total, `swap` com uma fila local reduz ainda mais a seção crítica.
-Destruir resultados obsoletos e recursos fora do lock. Manter conjuntos/maps
-separados para presença, jobs em execução e versão desejada.
+**Proposal:** use `std::deque<MeshResult>` for ready results; remove K with `pop_front` into a local vector and finalize outside the mutex. Cost is O(K) per removal. For full consumption, `swap` with a local queue further reduces the critical section. Destroy stale results and resources outside the lock. Keep separate sets/maps for presence, running jobs, and desired versions.
 
-Deque resolve o transporte FIFO; prioridade por distância exige filas por
-classe de prioridade ou outra estrutura. FIFO de conclusão sozinho não garante
-que o chunk mais próximo seja instalado primeiro. Não substituir por deque os
-HashSets de chunks ativos ou dirty: ali deduplicação e consulta de presença são
-funções úteis.
+A deque handles FIFO transport; distance priority requires priority-class queues or another structure. Completion FIFO alone does not guarantee that the nearest chunk is installed first. Do not replace active or dirty chunk HashSets with a deque: deduplication and presence queries are useful there.
 
-### 2. Jobs duplicados e resultados novos perdidos
+### 2. Duplicate jobs and lost newer results
 
-`queue_async_generate_mesh` insere a posição em `_generating_meshes` sem verificar
-se ela já existe. `_rebuild_chunk` pode enviar outro job enquanto o anterior
-ainda roda. O conjunto de resultados considera iguais duas meshes da mesma
-posição, independentemente da versão. O HashSet retorna a entrada existente ao
-reinserir a chave; não atualiza seu valor.
+`queue_async_generate_mesh` inserts the position into `_generating_meshes` without checking whether it already exists. `_rebuild_chunk` can submit another job while the previous one is still running. The result set considers two meshes at the same position equal regardless of version. HashSet returns the existing entry when reinserting a key; it does not update its value.
 
-Se v1 terminar e permanecer na fila, e depois v2 terminar, v2 pode ser ignorada.
-A finalização rejeita v1 pela versão atual, mas v2 já foi perdida. Além disso,
-o primeiro job a acabar apaga a posição do conjunto mesmo que outro job da
-mesma posição continue em execução. Portanto, o conjunto não representa a
-quantidade real de trabalhos pendentes.
+If v1 finishes and remains in the queue, and v2 finishes afterward, v2 can be ignored. Finalization rejects v1 against the current version, but v2 has already been lost. In addition, the first job to finish removes the position from the set even if another job at the same position is still running. The set therefore does not represent the actual number of pending jobs.
 
-**Proposta:** um job em execução por posição, com revisão desejada e marcador de
-nova solicitação. Edições durante a execução atualizam a revisão desejada; ao
-terminar, publicar um resultado válido ou agendar uma única atualização.
-Usar identidade do mundo/epoch e revisão de solicitação, além da versão dos
-blocos. Alterações em vizinhos e no halo de AO também invalidam a mesh; a versão
-do chunk central sozinha não cobre essas dependências.
+**Proposal:** one running job per position, with a desired revision and a resubmission marker. Edits during execution update the desired revision; on completion, publish a valid result or schedule a single update. Use world identity/epoch and request revision in addition to block version. Neighbor and AO-halo changes also invalidate the mesh; the central chunk's version alone does not cover those dependencies.
 
-### 3. Finalização pode produzir picos na thread principal
+### 3. Finalization can cause main-thread spikes
 
-`src/voxel_api.cpp:228` escolhe 1 ou 2 meshes por frame normalmente, 5 quando há
-mais de 200 resultados e **100** quando há mais de 1.000. Aumentar o trabalho
-bruscamente justamente quando a fila cresce pode agravar os picos. O `delta`
-representa o frame anterior e inclui outros custos; não mede a instalação atual.
+`src/voxel_api.cpp:228` normally chooses 1 or 2 meshes per frame, 5 when there are more than 200 results, and **100** when there are more than 1,000. Abruptly increasing work precisely when the queue grows can worsen spikes. `delta` represents the previous frame and includes other costs; it does not measure current installation.
 
-`_finalize_chunk` instala recursos, busca arrays de superfícies, configura
-colisão e luzes. `ChunkNode::set_collision_faces` chama `set_faces`; sua parcela
-de custo ainda não foi medida. Num rebuild, remover o nó anterior limpa a
-colisão e as luzes, e a instalação as recria.
+`_finalize_chunk` installs resources, retrieves surface arrays, and configures collision and lights. `ChunkNode::set_collision_faces` calls `set_faces`; its share of the cost has not been measured. During a rebuild, removing the previous node clears collision and lights, and installation recreates them.
 
-**Proposta:** orçamento configurável por tempo, inicialmente experimentar
-1–2 ms/frame de instalação, com limite adicional de quantidade. Verificar o
-tempo entre resultados; uma única instalação pesada ainda pode ultrapassar o
-orçamento. Atualizar o nó existente nos rebuilds. Transportar a classificação
-das superfícies no resultado, evitando recuperar arrays para identificar água.
-Priorizar colisões próximas ao jogador e avaliar instalação separada da visual.
+**Proposal:** a configurable time budget, initially experimenting with 1–2 ms/frame of installation, plus a count cap. Check time between results; a single heavy installation can still exceed the budget. Update the existing node on rebuilds. Carry surface classification in the result to avoid retrieving arrays to identify water. Prioritize collisions near the player and evaluate installation separately from visuals.
 
-### 4. Varredura e sincronização repetidas
+### 4. Repeated scanning and synchronization
 
-`_update_visible_chunks` copia todos os chunks ativos e os percorre a cada frame.
-Cada busca do repositório adquire seu mutex. `_get_neighbors_for` realiza 27
-buscas, portanto 27 aquisições separadas por tentativa de mesh. Chunks em
-`WAITING_NEIGHBORS` podem repetir essas tentativas em todos os frames.
+`_update_visible_chunks` copies all active chunks and traverses them every frame. Each repository lookup acquires its mutex. `_get_neighbors_for` performs 27 lookups, hence 27 separate acquisitions per mesh attempt. Chunks in `WAITING_NEIGHBORS` can repeat those attempts every frame.
 
-No raio horizontal 4 e altura 3 existem 49 × 7 = **343** chunks ativos, longe
-dos limites verticais do mundo. O tamanho cresce aproximadamente com R² × H.
-O `cache_radius` não é usado pelo streaming para gerar uma camada extra de
-vizinhos: os chunks das bordas podem ficar esperando vizinhos nunca solicitados
-num mundo recém-criado. Isso também mantém tentativas inúteis a cada frame.
+At horizontal radius 4 and height 3, there are 49 × 7 = **343** active chunks away from the world's vertical bounds. The count grows approximately with R² × H. Streaming does not use `cache_radius` to generate an extra neighbor layer: boundary chunks can wait for neighbors never requested in a newly created world. This also sustains pointless attempts every frame.
 
-**Proposta:** gerar dados numa camada de halo além dos chunks visíveis; dirigir
-as tentativas de mesh por eventos (chunk entrou, dados chegaram, vizinho chegou,
-edição ocorreu), com deduplicação das posições pendentes. Buscar os 27 ponteiros
-numa chamada ao repositório sob um único lock. Somente adotar isso após definir
-como os dados permanecem consistentes durante o meshing.
+**Proposal:** generate data in a halo beyond visible chunks; drive mesh attempts through events (chunk entered, data arrived, neighbor arrived, edit occurred), deduplicating pending positions. Query all 27 pointers in one repository call under a single lock. Adopt this only after defining how data remains consistent during meshing.
 
-### 5. Inicialização repetida por mesh
+### 5. Repeated initialization per mesh
 
-Cada job constrói `ChunkMeshBuilder`. Seu construtor solicita a textura pelo
-ResourceLoader e abre/interpreta `block_registry.generated.json`, reconstruindo
-maps de texturas e cores. O carregador pode reutilizar a textura em cache, mas
-a abertura do JSON e sua interpretação são explícitas a cada construção.
-`block_texture_array` não é usada por `build` no código atual.
+Each job constructs a `ChunkMeshBuilder`. Its constructor requests the texture through ResourceLoader and opens/parses `block_registry.generated.json`, rebuilding texture and color maps. The loader can reuse a cached texture, but JSON opening and parsing explicitly occur on every construction. `block_texture_array` is not used by `build` in the current code.
 
-**Proposta:** carregar metadados uma vez e compartilhar um snapshot imutável,
-preferencialmente com tabelas indexadas por ID/face. Não compartilhar buffers
-mutáveis do builder. Reutilizar scratch buffers por tarefa que processa um
-pequeno lote, ou por worker com estratégia de reentrância bem definida.
+**Proposal:** load metadata once and share an immutable snapshot, preferably using tables indexed by ID/face. Do not share mutable builder buffers. Reuse scratch buffers per task processing a small batch, or per worker with a well-defined reentrancy strategy.
 
-### 6. Memória por chunk e acesso aos voxels
+### 6. Memory per chunk and voxel access
 
-Os chunks atuais são **32 × 64 × 32 = 65.536 voxels**. `Block` tem 4 bytes:
-**256 KiB** de blocos por chunk, além de estágio, flags e overhead da alocação.
-O placeholder de geração também é um Chunk completo zerado, apesar de só servir
-para informar o estágio. Para 343 posições, placeholders representam cerca de
-85,75 MiB de blocos; os resultados gerados que aguardam consumo podem coexistir
-com esses placeholders. Cada geração aloca ainda 64 KiB de prioridades de
-escrita e os dados das 1.024 colunas, além dos buffers dos passes.
+Current chunks are **32 × 64 × 32 = 65,536 voxels**. `Block` is 4 bytes: **256 KiB** of blocks per chunk, plus stage, flags, and allocation overhead. The generation placeholder is also a full zeroed Chunk even though it only reports stage. For 343 positions, placeholders represent approximately 85.75 MiB of blocks; generated results waiting for consumption can coexist with those placeholders. Each generation additionally allocates 64 KiB of write priorities and data for 1,024 columns, plus pass buffers.
 
-O mesher já usa greedy meshing. Ainda assim, executa seis varreduras de volume
-para faces, varreduras de máscaras e outra de volume para plantas. Esta última
-usa z como eixo interno, mas o layout é `x + y*SIZE_X + z*SIZE_X*SIZE_Y`: o passo
-interno é de 8.192 bytes. Há uma oportunidade concreta de melhorar localidade
-usando x como eixo interno. Nem todas as orientações de face terão localidade
-ideal com o mesmo layout.
+The mesher already uses greedy meshing. It still performs six volume scans for faces, mask scans, and another volume scan for plants. The latter uses z as the inner axis, but layout is `x + y*SIZE_X + z*SIZE_X*SIZE_Y`: the inner stride is 8,192 bytes. Using x as the inner axis offers a concrete locality improvement. Not all face orientations will have ideal locality with the same layout.
 
-`BiomeSelectionPass` recalcula as mesmas 1.024 colunas XZ para cada chunk Y da
-mesma coluna de chunks. O sampler chama seis recursos de ruído por coluna.
+`BiomeSelectionPass` recalculates the same 1,024 XZ columns for each Y chunk in the same chunk column. The sampler calls six noise resources per column.
 
-**Proposta:** placeholder leve (posição, estágio, revisão), cache imutável de
-amostragem por coluna XZ e configuração do mundo, percursos contíguos quando
-possível e indicadores de chunk vazio/ocupação para evitar meshing de ar.
-Manter esses indicadores nas edições; um chunk sólido só pode pular faces se o
-halo provar que elas não ficam expostas. Medir também o cache de árvores, que
-faz consultas e atualizações LRU com mutex e copia candidatos.
+**Proposal:** lightweight placeholders (position, stage, revision), an immutable sampling cache by XZ column and world configuration, contiguous traversal where possible, and empty-chunk/occupancy indicators to avoid meshing air. Maintain these indicators on edits; a solid chunk can skip faces only if the halo proves they are unexposed. Also measure the tree cache, which performs mutex-protected LRU lookups/updates and copies candidates.
 
-### 7. Correção da sincronização antes de ampliar o paralelismo
+### 7. Correct synchronization before increasing parallelism
 
-Os jobs guardam ponteiros crus para os generators/loaders e ignoram o TaskID
-retornado pelo WorkerThreadPool. Não há espera explícita pelo término dos jobs
-antes de liberar seus donos. `_clear_world` está vazio. Uma mudança de mundo
-pode misturar estado antigo e novo, além de deixar jobs antigos pendentes.
+Jobs retain raw pointers to generators/loaders and ignore the TaskID returned by WorkerThreadPool. There is no explicit wait for jobs to finish before freeing their owners. `_clear_world` is empty. A world change can mix old and new state and leave old jobs pending.
 
-O mutex do repositório protege o map, mas o shared_ptr retornado não protege os
-blocos: `set_block` escreve no mesmo Chunk que os workers leem no mesher.
-O estágio do placeholder também é escrito pelo worker e lido fora do lock na
-thread principal. Checar a versão depois não elimina essas corridas de dados.
+The repository mutex protects the map, but the returned shared_ptr does not protect blocks: `set_block` writes to the same Chunk that workers read in the mesher. Placeholder stage is also written by the worker and read outside the lock on the main thread. Checking the version afterward does not eliminate these data races.
 
-**Proposta:** snapshots imutáveis para meshing, ou sincronização explícita de
-leitura/escrita de blocos; ciclo de vida com TaskIDs, cancelamento lógico e
-descarte por epoch. Ao fechar/trocar mundo, impedir novas submissões e garantir
-que jobs não acessem objetos destruídos nem recursos de ruído reconfigurados.
-Snapshots do chunk central + halo de um voxel podem evitar copiar 27 chunks
-inteiros. Definir o custo e a consistência desse snapshot antes de implementá-lo.
+**Proposal:** immutable meshing snapshots or explicit synchronization of block reads/writes; lifecycle management with TaskIDs, logical cancellation, and epoch-based rejection. When closing/switching worlds, prevent new submissions and ensure jobs do not access destroyed objects or reconfigured noise resources. A central-chunk snapshot plus a one-voxel halo can avoid copying 27 complete chunks. Define this snapshot's cost and consistency before implementing it.
 
-## Uma tarefa por chunk ou lotes?
+## One task per chunk or batches?
 
-O código já usa o WorkerThreadPool global do Godot; não cria uma thread por
-chunk. Atualmente cria **uma tarefa nativa por chunk**, tanto para modelo como
-para mesh. Não há evidência medida de que o custo de submissão domine os passes.
+The code already uses Godot's global WorkerThreadPool; it does not create a thread per chunk. It currently creates **one native task per chunk** for both models and meshes. There is no measured evidence that submission overhead dominates the passes.
 
-Há três decisões distintas:
+There are three separate decisions:
 
-1. **Publicar/consumir em lote:** reduz aquisições do mutex e trabalho de fila;
-   tem benefício estrutural claro. Publicar lotes pequenos evita reter resultados
-   prontos por muito tempo.
-2. **Submeter uma lista ao pool:** comparar a tarefa individual com a API nativa
-   de grupos disponível nos headers locais. Um grupo pode distribuir índices
-   dinamicamente entre workers, sem exigir que uma tarefa processe toda a lista.
-3. **Cada tarefa executar K chunks sequencialmente:** experimentar K = 1, 2, 4,
-   8. Amortiza submissão e preparação, mas lotes grandes pioram balanceamento,
-   prioridade, cancelamento e tempo até o primeiro resultado. Terreno vazio,
-   cavernas, vegetação e meshes de superfície têm custos distintos.
+1. **Publish/consume in batches:** reduces mutex acquisitions and queue work, with a clear structural benefit. Publishing small batches avoids retaining ready results for too long.
+2. **Submit a list to the pool:** compare individual tasks with the native group API available in local headers. A group can distribute indices dynamically among workers without requiring one task to process the entire list.
+3. **Each task executes K chunks sequentially:** experiment with K = 1, 2, 4, 8. This amortizes submission and preparation, but large batches worsen balancing, priority, cancellation, and time to the first result. Empty terrain, caves, vegetation, and surface meshes have different costs.
 
-Minha proposta inicial é um número limitado de tarefas em execução, extraindo
-pequenos lotes de uma fila prioritária e verificando cancelamento entre chunks.
-Rebuilds próximos ao jogador devem usar lote pequeno. Não manter loops de worker
-bloqueados indefinidamente dentro do pool compartilhado, que também atende IO e
-outras tarefas. Aplicar limites à quantidade de resultados e memória pendentes;
-apenas aumentar produtores pode acumular mais meshes do que a thread principal
-consegue instalar.
+The initial proposal is a limited number of running tasks pulling small batches from a priority queue and checking cancellation between chunks. Rebuilds near the player should use small batches. Do not keep worker loops blocked indefinitely inside the shared pool, which also handles IO and other tasks. Limit pending results and memory; simply increasing producers can accumulate more meshes than the main thread can install.
 
-## Avaliação do tamanho
+## Size assessment
 
-| Dimensões | Voxels | Blocos/chunk | Chunks para o mesmo volume físico |
+| Dimensions | Voxels | Blocks/chunk | Chunks for the same physical volume |
 |---|---:|---:|---:|
-| 16 × 32 × 16 | 8.192 | 32 KiB | 8 vezes o atual |
-| 32 × 32 × 32 | 32.768 | 128 KiB | 2 vezes o atual |
-| 32 × 64 × 32 (atual) | 65.536 | 256 KiB | referência |
-| 64 × 64 × 64 | 262.144 | 1 MiB | 1/4 do atual |
+| 16 × 32 × 16 | 8,192 | 32 KiB | 8 times the current count |
+| 32 × 32 × 32 | 32,768 | 128 KiB | 2 times the current count |
+| 32 × 64 × 32 (current) | 65,536 | 256 KiB | Baseline |
+| 64 × 64 × 64 | 262,144 | 1 MiB | 1/4 of the current count |
 
-Chunks menores podem diminuir o custo e a latência de um rebuild isolado, mas
-aumentam jobs, nós, fronteiras, colisões e superfícies/draw calls potenciais.
-Chunks maiores amortizam agendamento, mas tornam edições e uploads mais caros.
+Smaller chunks can reduce the cost and latency of an isolated rebuild but increase jobs, nodes, boundaries, collisions, and potential surfaces/draw calls. Larger chunks amortize scheduling but make edits and uploads more expensive.
 
-Primeiro comparar o atual com **32³**, depois **16 × 32 × 16**, mantendo a mesma
-distância em metros e extensão vertical. Avaliar separar o tamanho de armazenamento
-do tamanho das seções de mesh/colisão: dados maiores e rebuilds menores podem
-ser uma alternativa à mudança global.
+First compare the current size with **32³**, then **16 × 32 × 16**, keeping the same distance in meters and vertical extent. Evaluate separating storage size from mesh/collision section size: larger data units with smaller rebuilds can be an alternative to a global size change.
 
-Não alterar só as constantes: a altura total do mundo depende de SIZE_Y, saves
-guardam coordenadas de chunk/bloco local e árvores usam densidade/candidatos por
-chunk. Preservar cobertura física, determinismo, densidade e compatibilidade
-dos mundos exige mudanças coordenadas.
+Do not change constants alone: total world height depends on SIZE_Y, saves store chunk/local block coordinates, and trees use density/candidates per chunk. Preserving physical coverage, determinism, density, and world compatibility requires coordinated changes.
 
-## Microbenchmark executado
+## Microbenchmark performed
 
-`tests/chunk_queue_benchmark.cpp` usa o HashSet deste checkout e reproduz o
-algoritmo de retirada atual, comparando-o com deque + vetor local. Registro
-representativo com três shared_ptr, posição e versão; adaptadores de alocação
-usam malloc/realloc/free. Sem instanciar recursos Godot. Sete repetições;
-medianas. A preparação da fila fica fora do trecho cronometrado. Confere contagem
-e soma dos IDs consumidos. CPU local: Intel Core i5-12400F; compilação `-O3`.
+`tests/chunk_queue_benchmark.cpp` uses this checkout's HashSet and reproduces the current removal algorithm, comparing it with deque + local vector. A representative record contains three shared_ptr values, position, and version; allocation adapters use malloc/realloc/free. No Godot resources are instantiated. Seven repetitions; medians. Queue preparation is outside the timed section. The benchmark checks the count and sum of consumed IDs. Local CPU: Intel Core i5-12400F; compiled with `-O3`.
 
-| Fila inicial | Lote | Primeira retirada, HashSet | Primeira retirada, deque | Drenagem completa, HashSet | Drenagem completa, deque |
+| Initial queue | Batch | First removal, HashSet | First removal, deque | Full drain, HashSet | Full drain, deque |
 |---:|---:|---:|---:|---:|---:|
-| 200 | 2 | 5,126 µs | 0,048 µs | 0,304 ms | 0,002 ms |
-| 1.000 | 2 | 54,595 µs | 0,052 µs | 7,431 ms | 0,011 ms |
-| 10.000 | 2 | 771,457 µs | 0,059 µs | 894,443 ms | 0,115 ms |
-| 1.000 | 100 | 44,614 µs | 0,728 µs | 0,212 ms | 0,008 ms |
+| 200 | 2 | 5.126 µs | 0.048 µs | 0.304 ms | 0.002 ms |
+| 1,000 | 2 | 54.595 µs | 0.052 µs | 7.431 ms | 0.011 ms |
+| 10,000 | 2 | 771.457 µs | 0.059 µs | 894.443 ms | 0.115 ms |
+| 1,000 | 100 | 44.614 µs | 0.728 µs | 0.212 ms | 0.008 ms |
 
-Esses tempos avaliam a estrutura e o algoritmo de consumo. Não incluem geração,
-meshing, física, GPU, custo real das referências Godot, concorrência de produtores
-ou espera de mutex. A drenagem completa soma retiradas sem espaçá-las por frames.
-Não são previsão de ganho de FPS. As medidas abaixo de um microssegundo têm
-sensibilidade ao relógio, caches e escalonamento; a mudança de complexidade é a
-evidência principal. A fila de 10.000 é um cenário de estresse, não uma fila
-observada no jogo.
+These timings assess the data structure and consumption algorithm. They exclude generation, meshing, physics, GPU, actual Godot reference costs, producer concurrency, and mutex waiting. A full drain adds removals without spacing them across frames. These are not predictions of FPS gains. Sub-microsecond measurements are sensitive to clocks, caches, and scheduling; the complexity change is the main evidence. The 10,000-entry queue is a stress scenario, not a queue observed in the game.
 
-Reprodução, a partir da raiz do projeto:
+Reproduce from the project root:
 
 ```sh
 g++ -O3 -DNDEBUG -std=c++17 -Igodot-cpp/include -Igodot-cpp/gen/include \
@@ -245,23 +118,12 @@ g++ -O3 -DNDEBUG -std=c++17 -Igodot-cpp/include -Igodot-cpp/gen/include \
 /tmp/chunk_queue_benchmark
 ```
 
-## Ordem recomendada e medições necessárias
+## Recommended order and required measurements
 
-1. Instrumentar timestamps de solicitação, início/fim do job, publicação e
-   instalação. Separar espera no pool, espera/tempo segurando mutex, geração por
-   pass, metadados, meshing, criação da mesh e instalação visual/física. Medir
-   também memória, tamanho máximo das filas, trabalhos descartados/duplicados e
-   contagem de rebuilds por posição.
-2. Corrigir versões, deduplicação, corridas e ciclo de vida; trocar a fila pronta
-   por deque e encurtar o lock. Implementar orçamento temporal na finalização.
-3. Compartilhar metadados, remover placeholders volumosos, agrupar busca de
-   vizinhos e substituir varredura por eventos, com halo de dados definido.
-4. Comparar tarefas individuais, grupos e lotes 2/4/8 com limite de pendências.
-5. Só então comparar tamanhos e seções independentes de mesh.
+1. Instrument timestamps for requests, job start/end, publication, and installation. Separate pool waiting, mutex waiting/holding time, generation per pass, metadata, meshing, mesh creation, and visual/physics installation. Also measure memory, maximum queue size, discarded/duplicate jobs, and rebuild count per position.
+2. Correct versions, deduplication, races, and lifecycle; replace the ready queue with a deque and shorten lock duration. Implement a time budget for finalization.
+3. Share metadata, remove bulky placeholders, batch neighbor queries, and replace scanning with events, with a defined data halo.
+4. Compare individual tasks, groups, and batches of 2/4/8 with pending-work limits.
+5. Only then compare sizes and independent mesh sections.
 
-Usar mesma seed, área em metros, configuração e rota; repetir cenários de carga
-inicial, jogador parado, travessia de fronteiras, deslocamento rápido e edições
-em faces/arestas/cantos. Registrar p50/p95/p99 do frame e da latência até render,
-throughput de chunks e memória máxima em builds release. Validar o resultado
-visual e colisões no renderer utilizado pelo jogo, incluindo AO, água, plantas
-e tochas. Headless ajuda a isolar CPU, mas não valida o custo de GPU.
+Use the same seed, area in meters, configuration, and route; repeat initial loading, idle player, boundary crossing, rapid movement, and face/edge/corner edit scenarios. Record p50/p95/p99 frame time and latency to rendering, chunk throughput, and peak memory in release builds. Validate visuals and collisions with the game's renderer, including AO, water, plants, and torches. Headless helps isolate CPU costs but does not validate GPU costs.
